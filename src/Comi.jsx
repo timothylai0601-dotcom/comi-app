@@ -1190,8 +1190,8 @@ function Welcome({ go }) {
         padding: "18px 32px 0",
       }}>
         <h1 style={{
-          fontFamily: "Quicksand", fontWeight: 700, fontSize: 32,
-          color: "#1A5070", margin: 0, lineHeight: 1.18,
+          fontFamily: "Quicksand", fontWeight: 800, fontSize: 32,
+          color: "#fff", margin: 0, lineHeight: 1.18,
         }}>
           I can finally<br />understand<br />my pet.
         </h1>
@@ -1335,7 +1335,7 @@ function Auth({ go, onSignup }) {
     return (
       <div style={{
         height: "100%", display: "flex", flexDirection: "column",
-        background: "linear-gradient(160deg, #D8EFF8 0%, #B2D8EE 45%, #82BCE0 100%)",
+        background: "transparent",
         overflow: "hidden",
       }}>
         <style>{authAnim}</style>
@@ -4898,11 +4898,11 @@ export default function App() {
       `}</style>
 
       {/* phone frame */}
-      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
+      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : screen === "auth" ? "linear-gradient(160deg, #A8D4EA 0%, #7EBCDA 45%, #5A9EC8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
         {/* faux status bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: screen === "welcome" ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
           <span>9:41</span>
-          <span style={{ display: "flex", gap: 4, alignItems: "center" }}><PawPrint size={14} color={theme.ocean} /> Comi</span>
+          <span style={{ display: "flex", gap: 4, alignItems: "center" }}><PawPrint size={14} color={(screen === "welcome" || screen === "auth") ? "#fff" : theme.ocean} /> Comi</span>
         </div>
         {/* scrollable screen content */}
         <div style={{ flex: 1, overflowY: "auto" }}>
