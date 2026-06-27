@@ -1187,7 +1187,7 @@ function Welcome({ go }) {
       {/* Headline */}
       <div style={{
         position: "relative", zIndex: 2,
-        padding: "18px 32px 0",
+        padding: "52px 32px 0",
       }}>
         <h1 style={{
           fontFamily: "Quicksand", fontWeight: 800, fontSize: 32,
@@ -1454,15 +1454,15 @@ function Auth({ go, onSignup }) {
     const validate = () => {
       const users = getStoredUsers();
       const errs = {};
-      if (!formName.trim())    errs.name     = "Please enter your name.";
+      if (!formName.trim())     errs.name     = "Please enter your name.";
       if (!formUsername.trim()) errs.username = "Please choose a username.";
       else if (users.some(u => u.username?.toLowerCase() === formUsername.toLowerCase()))
         errs.username = "Username is already taken.";
-      if (!formEmail.trim())   errs.email    = "Please enter your email.";
+      if (!formEmail.trim())    errs.email    = "Please enter your email.";
       else if (users.some(u => u.email?.toLowerCase() === formEmail.toLowerCase()))
         errs.email = "An account with this email already exists.";
       if (formPassword.length < 8) errs.password = "Password must be at least 8 characters.";
-      if (formConfirmPw !== formPassword) errs.confirm  = "Passwords don't match.";
+      if (formConfirmPw !== formPassword) errs.confirm = "Passwords don't match.";
       return errs;
     };
 
@@ -1476,21 +1476,8 @@ function Auth({ go, onSignup }) {
       go("privacy");
     };
 
-    const Field = ({ placeholder, type = "text", value, onChange, errKey }) => (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <input
-          placeholder={placeholder} type={type} value={value}
-          onChange={e => { onChange(e.target.value); setErrors(p => ({ ...p, [errKey]: undefined })); }}
-          onFocus={errors[errKey] ? fiErr : fiFocus} onBlur={errors[errKey] ? fiErr : fiBlur}
-          style={{ ...fi, borderColor: errors[errKey] ? "#F08080" : "#D4E6F4" }}
-        />
-        {errors[errKey] && (
-          <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>
-            {errors[errKey]}
-          </span>
-        )}
-      </div>
-    );
+    const fieldBorder = (key) => errors[key] ? "#F08080" : "#D4E6F4";
+    const clearErr    = (key) => setErrors(p => ({ ...p, [key]: undefined }));
 
     return (
       <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#F0F8FD", overflow: "hidden" }}>
@@ -1516,11 +1503,50 @@ function Auth({ go, onSignup }) {
         {/* Scrollable form */}
         <div style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "20px 18px 22px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
-          <Field placeholder="Full name"        value={formName}       onChange={setFormName}      errKey="name" />
-          <Field placeholder="Username"         value={formUsername}   onChange={setFormUsername}  errKey="username" />
-          <Field placeholder="Email"            value={formEmail}      onChange={setFormEmail}     errKey="email" type="email" />
-          <Field placeholder="Password"         value={formPassword}   onChange={setFormPassword}  errKey="password" type="password" />
-          <Field placeholder="Confirm password" value={formConfirmPw}  onChange={setFormConfirmPw} errKey="confirm" type="password" />
+          {/* Full name */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <input placeholder="Full name" value={formName}
+              onChange={e => { setFormName(e.target.value); clearErr("name"); }}
+              onFocus={fiFocus} onBlur={fiBlur}
+              style={{ ...fi, borderColor: fieldBorder("name") }} />
+            {errors.name && <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>{errors.name}</span>}
+          </div>
+
+          {/* Username */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <input placeholder="Username" value={formUsername}
+              onChange={e => { setFormUsername(e.target.value); clearErr("username"); }}
+              onFocus={fiFocus} onBlur={fiBlur}
+              style={{ ...fi, borderColor: fieldBorder("username") }} />
+            {errors.username && <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>{errors.username}</span>}
+          </div>
+
+          {/* Email */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <input placeholder="Email" type="email" value={formEmail}
+              onChange={e => { setFormEmail(e.target.value); clearErr("email"); }}
+              onFocus={fiFocus} onBlur={fiBlur}
+              style={{ ...fi, borderColor: fieldBorder("email") }} />
+            {errors.email && <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>{errors.email}</span>}
+          </div>
+
+          {/* Password */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <input placeholder="Password" type="password" value={formPassword}
+              onChange={e => { setFormPassword(e.target.value); clearErr("password"); }}
+              onFocus={fiFocus} onBlur={fiBlur}
+              style={{ ...fi, borderColor: fieldBorder("password") }} />
+            {errors.password && <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>{errors.password}</span>}
+          </div>
+
+          {/* Confirm password */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <input placeholder="Confirm password" type="password" value={formConfirmPw}
+              onChange={e => { setFormConfirmPw(e.target.value); clearErr("confirm"); }}
+              onFocus={fiFocus} onBlur={fiBlur}
+              style={{ ...fi, borderColor: fieldBorder("confirm") }} />
+            {errors.confirm && <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>{errors.confirm}</span>}
+          </div>
 
           {/* Newsletter */}
           <div
