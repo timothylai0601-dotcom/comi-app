@@ -1168,86 +1168,85 @@ const labelStyle = { fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, col
 
 // 1. Welcome
 function Welcome({ go }) {
+  const btnBase = {
+    width: "100%", padding: "15px 18px", borderRadius: 999, cursor: "pointer",
+    fontFamily: "Quicksand", fontWeight: 700, fontSize: 16, border: "none",
+    transition: "transform .08s ease",
+  };
   const press   = (e) => (e.currentTarget.style.transform = "scale(0.97)");
   const release = (e) => (e.currentTarget.style.transform = "scale(1)");
 
-  const floatAnim = `
-    @keyframes welcomeFloat {
-      0%, 100% { transform: translateY(0px); }
-      50%       { transform: translateY(-14px); }
-    }
-  `;
-
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{floatAnim}</style>
+    <div style={{
+      height: "100%",
+      background: "transparent",
+      position: "relative",
+      overflow: "hidden",
+    }}>
 
-      {/* comi logo top-right */}
-      <div style={{ flexShrink: 0, display: "flex", justifyContent: "flex-end", padding: "14px 24px 0" }}>
-        <span style={{ fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 22, color: "rgba(255,255,255,0.92)", letterSpacing: "0.06em" }}>
-          comi
-        </span>
-      </div>
-
-      {/* Mascot + headline, vertically centered */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", minHeight: 0 }}>
-        <img
-          src={CodyWaving}
-          alt="Cody"
-          style={{
-            width: 260, height: "auto", objectFit: "contain",
-            animation: "welcomeFloat 3.4s ease-in-out infinite",
-            pointerEvents: "none", display: "block",
-          }}
-        />
-        <h1 style={{
-          fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 27,
-          color: "#fff", textAlign: "center", margin: "20px 0 8px", lineHeight: 1.22,
-        }}>
-          I can finally<br />understand my pet.
-        </h1>
-        <p style={{
-          fontFamily: "Nunito, sans-serif", fontSize: 15, color: "rgba(255,255,255,0.78)",
-          textAlign: "center", margin: 0, lineHeight: 1.5,
-        }}>
-          Track your pet's wellness every day.
-        </p>
-      </div>
-
-      {/* White bottom card */}
+      {/* Headline */}
       <div style={{
-        flexShrink: 0, background: "#fff",
-        borderRadius: "28px 28px 0 0",
-        padding: "26px 24px 40px",
-        boxShadow: "0 -6px 32px rgba(80,130,190,0.14)",
-        display: "flex", flexDirection: "column", gap: 12,
+        position: "relative", zIndex: 2,
+        padding: "18px 32px 0",
+      }}>
+        <h1 style={{
+          fontFamily: "Quicksand", fontWeight: 700, fontSize: 32,
+          color: "#1A5070", margin: 0, lineHeight: 1.18,
+        }}>
+          I can finally<br />understand<br />my pet.
+        </h1>
+      </div>
+
+      {/* Cody — hero, anchored bottom, covers lower ~2/3 */}
+      <img
+        src={CodyWaving}
+        alt="Cody"
+        style={{
+          position: "absolute",
+          bottom: -270,
+          left: "40%",
+          transform: "translateX(-50%)",
+          width: 1100,
+          height: 1100,
+          objectFit: "contain",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Soft fade so buttons read cleanly over Cody */}
+      <div style={{
+        position: "absolute",
+        bottom: 0, left: 0, right: 0,
+        height: 250,
+        background: `linear-gradient(to bottom, transparent 0%, rgba(92,173,212,0.55) 52%, rgba(92,173,212,0.93) 100%)`,
+        zIndex: 2,
+        pointerEvents: "none",
+      }} />
+
+      {/* Buttons — pinned to bottom, on top of Cody */}
+      <div style={{
+        position: "absolute",
+        bottom: 0, left: 0, right: 0,
+        padding: "0 28px 44px",
+        zIndex: 3,
+        display: "flex", flexDirection: "column", gap: 10,
       }}>
         <button
           onClick={() => go("auth")}
+          style={{ ...btnBase, background: "#fff", color: theme.ocean, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
           onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-          style={{
-            width: "100%", padding: "16px", borderRadius: 999, border: "none",
-            background: "linear-gradient(135deg, #5AB4DC 0%, #3A8DBE 100%)",
-            color: "#fff", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 17,
-            cursor: "pointer", boxShadow: "0 6px 22px rgba(58,141,190,0.30)",
-            transition: "transform 0.08s ease",
-          }}
         >
           Get started
         </button>
         <button
           onClick={() => go("auth")}
+          style={{ ...btnBase, background: "rgba(255,255,255,0.15)", color: "#fff", border: "2px solid rgba(255,255,255,0.5)" }}
           onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-          style={{
-            width: "100%", padding: "14px", borderRadius: 999,
-            border: "2px solid #C4DCF0", background: "transparent",
-            color: "#3A8DBE", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 16,
-            cursor: "pointer", transition: "transform 0.08s ease",
-          }}
         >
           I already have an account
         </button>
       </div>
+
     </div>
   );
 }
@@ -4899,7 +4898,7 @@ export default function App() {
       `}</style>
 
       {/* phone frame */}
-      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(160deg, #D4EDF8 0%, #AACFE9 40%, #7AB8D8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
+      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
         {/* faux status bar */}
         <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: screen === "welcome" ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
           <span>9:41</span>
