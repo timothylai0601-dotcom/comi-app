@@ -1256,260 +1256,423 @@ function Welcome({ go }) {
 function Auth({ go, onSignup }) {
   const [step, setStep] = useState("landing"); // "landing" | "signup" | "login"
 
-  // All hooks must be declared before any early return (React rules of hooks)
+  // All form state declared upfront (React rules of hooks)
   const [formName,       setFormName]       = useState("");
-  const [formEmail,      setFormEmail]       = useState("");
+  const [formUsername,   setFormUsername]   = useState("");
+  const [formEmail,      setFormEmail]      = useState("");
   const [formPassword,   setFormPassword]   = useState("");
   const [formConfirmPw,  setFormConfirmPw]  = useState("");
-  const [formPhone,      setFormPhone]      = useState("");
-  const [formCity,       setFormCity]       = useState("");
   const [formNewsletter, setFormNewsletter] = useState(true);
+  const [loginCred,      setLoginCred]      = useState("");
+  const [loginPass,      setLoginPass]      = useState("");
+  const [errors,         setErrors]         = useState({});
 
-  const landingAnim = `
-    @keyframes codyFloat {
-      0%, 100% { transform: translateY(0px); }
-      50%       { transform: translateY(-10px); }
-    }
-  `;
-
-  const fieldStyle = {
-    padding: "13px 16px",
-    borderRadius: 14,
-    border: "1.5px solid #C8DCEF",
-    fontFamily: "Nunito, sans-serif",
-    fontSize: 15,
-    color: theme.ink,
-    outline: "none",
-    background: "#fff",
-    boxSizing: "border-box",
-    width: "100%",
-    display: "block",
-    transition: "border-color 0.15s",
+  // Mock user store helpers
+  const getStoredUsers = () => {
+    try {
+      const raw = localStorage.getItem("comi_users");
+      const users = raw ? JSON.parse(raw) : [];
+      if (!users.length) {
+        const seeded = [
+          { username: "codydad", email: "cody@example.com", password: "password123", name: "Cody's Dad" },
+          { username: "lunaowner", email: "luna@example.com", password: "password123", name: "Luna's Owner" },
+        ];
+        localStorage.setItem("comi_users", JSON.stringify(seeded));
+        return seeded;
+      }
+      return users;
+    } catch { return []; }
+  };
+  const saveStoredUsers = (users) => {
+    try { localStorage.setItem("comi_users", JSON.stringify(users)); } catch {}
   };
 
   const press   = (e) => (e.currentTarget.style.transform = "scale(0.97)");
   const release = (e) => (e.currentTarget.style.transform = "scale(1)");
 
-  /* ── LANDING ── */
+  const authAnim = `
+    @keyframes authMascotFloat {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-12px); }
+    }
+  `;
+
+  // Shared field style for forms
+  const fi = {
+    padding: "13px 16px", borderRadius: 14, border: "1.5px solid #D4E6F4",
+    fontFamily: "Nunito, sans-serif", fontSize: 15, color: "#34414E",
+    outline: "none", background: "#F7FBFE", boxSizing: "border-box",
+    width: "100%", display: "block", transition: "border-color 0.15s",
+  };
+  const fiFocus = (e) => (e.target.style.borderColor = "#5AB4DC");
+  const fiBlur  = (e) => (e.target.style.borderColor = "#D4E6F4");
+  const fiErr   = (e) => (e.target.style.borderColor = "#F08080");
+
+  // Shared SVG icons
+  const GoogleIcon = () => (
+    <svg viewBox="0 0 24 24" width="18" height="18" style={{ flexShrink: 0 }}>
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+  );
+  const AppleIcon = () => (
+    <svg viewBox="0 0 814 1000" width="16" height="16" fill="#34414E" style={{ flexShrink: 0 }}>
+      <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.7-57.5-155.4-128.6C46.9 727.5 0 620 0 516.8 0 223.1 190.3 68.6 375.7 68.6c92.3 0 169.1 60.8 226.1 60.8 57 0 147.9-63.2 225.7-63.2 28.7 0 102.7 4.5 155.5 53.8zM543.3 49c-55.6 23.8-100.9 86.8-100.9 152.6 0 8.3 1.3 16.6 2.6 23.2 4.5.6 11.6 1.3 18.6 1.3 49.3 0 99.3-28.7 133.5-83.5 22.5-35.7 36.5-82.1 36.5-125.3 0-7-1.3-14-1.9-17.3-4.5.6-12.1 1.9-18.6 2.6C579 3.2 563.7 27.5 543.3 49z"/>
+    </svg>
+  );
+
+  const socialBtnStyle = {
+    width: "100%", padding: "13px 16px", borderRadius: 14,
+    border: "1.5px solid #D8EBF5", background: "#fff",
+    fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14,
+    color: "#34414E", cursor: "pointer", display: "flex", alignItems: "center",
+    justifyContent: "center", gap: 10, transition: "transform 0.08s ease",
+  };
+
+  /* ── LANDING (second screen: choice card) ── */
   if (step === "landing") {
     return (
       <div style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        background: "linear-gradient(170deg, #3A88BB 0%, #56AACC 45%, #82C6E2 100%)",
+        height: "100%", display: "flex", flexDirection: "column",
+        background: "linear-gradient(160deg, #D8EFF8 0%, #B2D8EE 45%, #82BCE0 100%)",
         overflow: "hidden",
       }}>
-        <style>{landingAnim}</style>
+        <style>{authAnim}</style>
 
-        {/* Comi logo */}
-        <div style={{ flexShrink: 0, display: "flex", justifyContent: "flex-end", padding: "14px 22px 0" }}>
-          <span style={{ fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 20, color: "rgba(255,255,255,0.92)", letterSpacing: "0.08em" }}>
+        {/* Top bar: back + logo */}
+        <div style={{
+          flexShrink: 0, display: "flex", alignItems: "center",
+          justifyContent: "space-between", padding: "14px 20px 0",
+        }}>
+          <button
+            onClick={() => go("welcome")}
+            style={{
+              background: "rgba(255,255,255,0.28)", border: "none", borderRadius: 999,
+              width: 36, height: 36, display: "grid", placeItems: "center",
+              cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            <ChevronLeft size={18} color="#fff" />
+          </button>
+          <span style={{ fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 20, color: "rgba(255,255,255,0.94)", letterSpacing: "0.07em" }}>
             comi
           </span>
+          <div style={{ width: 36 }} />
         </div>
 
-        {/* Mascot — centering wrapper + inner img carries animation so transforms don't conflict */}
-        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          <div style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)" }}>
-            <img
-              src={CodyWaving}
-              alt="Cody"
-              style={{ width: 560, height: "auto", animation: "codyFloat 3.2s ease-in-out infinite", pointerEvents: "none", display: "block" }}
-            />
+        {/* Mascot — centered in remaining space above card */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "0 0 8px" }}>
+          <img
+            src={CodyWaving}
+            alt="Cody"
+            style={{
+              width: 200, height: "auto", objectFit: "contain",
+              animation: "authMascotFloat 3.2s ease-in-out infinite",
+              pointerEvents: "none", display: "block",
+            }}
+          />
+        </div>
+
+        {/* White rounded bottom card */}
+        <div style={{
+          flexShrink: 0, background: "#fff",
+          borderRadius: "28px 28px 0 0",
+          padding: "26px 22px 38px",
+          boxShadow: "0 -6px 32px rgba(80,130,190,0.13)",
+        }}>
+          {/* Card headline */}
+          <h2 style={{
+            fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 22,
+            color: "#2A3D52", margin: "0 0 4px", textAlign: "center",
+          }}>
+            Create your Comi account
+          </h2>
+          <p style={{
+            fontFamily: "Nunito, sans-serif", fontSize: 13.5, color: "#7C8B98",
+            margin: "0 0 20px", textAlign: "center", lineHeight: 1.5,
+          }}>
+            Save your pet's mood, wellness patterns,<br />reminders, and profile.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Create account — primary */}
+            <button
+              onClick={() => setStep("signup")}
+              onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+              style={{
+                width: "100%", padding: "16px", borderRadius: 999, border: "none",
+                background: "linear-gradient(135deg, #5AB4DC 0%, #3A8DBE 100%)",
+                color: "#fff", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 16,
+                cursor: "pointer", boxShadow: "0 6px 22px rgba(58,141,190,0.28)",
+                transition: "transform 0.08s ease",
+              }}
+            >
+              Create account
+            </button>
+
+            {/* Log in — ghost */}
+            <button
+              onClick={() => setStep("login")}
+              onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+              style={{
+                width: "100%", padding: "14px", borderRadius: 999,
+                border: "2px solid #C8DCF0", background: "transparent",
+                color: "#3A8DBE", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 16,
+                cursor: "pointer", transition: "transform 0.08s ease",
+              }}
+            >
+              Log in
+            </button>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0" }}>
+              <div style={{ flex: 1, height: 1, background: "#E4EFF8" }} />
+              <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#AABFD0" }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "#E4EFF8" }} />
+            </div>
+
+            {/* Google */}
+            <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
+              <GoogleIcon />
+              Continue with Google
+            </button>
+
+            {/* Apple */}
+            <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
+              <AppleIcon />
+              Continue with Apple
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── SIGNUP FORM ── */
+  if (step === "signup") {
+    const validate = () => {
+      const users = getStoredUsers();
+      const errs = {};
+      if (!formName.trim())    errs.name     = "Please enter your name.";
+      if (!formUsername.trim()) errs.username = "Please choose a username.";
+      else if (users.some(u => u.username?.toLowerCase() === formUsername.toLowerCase()))
+        errs.username = "Username is already taken.";
+      if (!formEmail.trim())   errs.email    = "Please enter your email.";
+      else if (users.some(u => u.email?.toLowerCase() === formEmail.toLowerCase()))
+        errs.email = "An account with this email already exists.";
+      if (formPassword.length < 8) errs.password = "Password must be at least 8 characters.";
+      if (formConfirmPw !== formPassword) errs.confirm  = "Passwords don't match.";
+      return errs;
+    };
+
+    const handleCreate = () => {
+      const errs = validate();
+      if (Object.keys(errs).length) { setErrors(errs); return; }
+      const users = getStoredUsers();
+      users.push({ username: formUsername, email: formEmail, password: formPassword, name: formName, newsletter: formNewsletter });
+      saveStoredUsers(users);
+      if (onSignup) onSignup({ name: formName, email: formEmail, username: formUsername, newsletter: formNewsletter });
+      go("privacy");
+    };
+
+    const Field = ({ placeholder, type = "text", value, onChange, errKey }) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <input
+          placeholder={placeholder} type={type} value={value}
+          onChange={e => { onChange(e.target.value); setErrors(p => ({ ...p, [errKey]: undefined })); }}
+          onFocus={errors[errKey] ? fiErr : fiFocus} onBlur={errors[errKey] ? fiErr : fiBlur}
+          style={{ ...fi, borderColor: errors[errKey] ? "#F08080" : "#D4E6F4" }}
+        />
+        {errors[errKey] && (
+          <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#E06060", paddingLeft: 4 }}>
+            {errors[errKey]}
+          </span>
+        )}
+      </div>
+    );
+
+    return (
+      <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#F0F8FD", overflow: "hidden" }}>
+
+        {/* Header */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "14px 20px 0" }}>
+          <button
+            onClick={() => { setErrors({}); setStep("landing"); }}
+            style={{ background: "#fff", border: "none", borderRadius: 999, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(90,142,200,0.10)", flexShrink: 0 }}
+          >
+            <ChevronLeft size={18} color="#3A8DBE" />
+          </button>
+          <div>
+            <h2 style={{ fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 22, color: "#2A3D52", margin: 0 }}>
+              Create account
+            </h2>
+            <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#8BA0B4", margin: "1px 0 0" }}>
+              Join Comi and understand your pet better.
+            </p>
           </div>
         </div>
 
-        {/* Tagline */}
-        <h1 style={{ flexShrink: 0, fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 26, color: "#fff", textAlign: "center", margin: "12px 28px 0", lineHeight: 1.26 }}>
-          I can finally understand my pet.
-        </h1>
+        {/* Scrollable form */}
+        <div style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "20px 18px 22px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
-        {/* Buttons */}
-        <div style={{ flexShrink: 0, padding: "22px 22px 30px", display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Get started */}
-          <button
-            onClick={() => setStep("signup")}
-            onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+          <Field placeholder="Full name"        value={formName}       onChange={setFormName}      errKey="name" />
+          <Field placeholder="Username"         value={formUsername}   onChange={setFormUsername}  errKey="username" />
+          <Field placeholder="Email"            value={formEmail}      onChange={setFormEmail}     errKey="email" type="email" />
+          <Field placeholder="Password"         value={formPassword}   onChange={setFormPassword}  errKey="password" type="password" />
+          <Field placeholder="Confirm password" value={formConfirmPw}  onChange={setFormConfirmPw} errKey="confirm" type="password" />
+
+          {/* Newsletter */}
+          <div
+            onClick={() => setFormNewsletter(v => !v)}
             style={{
-              width: "100%", padding: "17px", borderRadius: 999, border: "none",
-              background: "#fff", color: theme.ocean,
-              fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 17,
-              cursor: "pointer", boxShadow: "0 6px 24px rgba(0,0,0,0.16)",
-              transition: "transform 0.08s ease",
+              display: "flex", alignItems: "flex-start", gap: 12,
+              padding: "12px 14px", background: "#F0F8FD", borderRadius: 14,
+              border: `1.5px solid ${formNewsletter ? "#5AB4DC" : "#D4E6F4"}`,
+              cursor: "pointer",
             }}
           >
-            Get started
-          </button>
+            <div style={{
+              width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
+              border: `2px solid ${formNewsletter ? "#5AB4DC" : "#AACCE0"}`,
+              background: formNewsletter ? "#5AB4DC" : "transparent",
+              display: "grid", placeItems: "center",
+            }}>
+              {formNewsletter && <Check size={12} color="#fff" />}
+            </div>
+            <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#3A4E60", lineHeight: 1.5, flex: 1 }}>
+              Send me Comi updates, pet wellness tips, and community news.
+            </span>
+          </div>
 
-          {/* Log in */}
+          <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#A0B4C4", margin: 0, textAlign: "center", lineHeight: 1.5 }}>
+            By creating an account you agree to Comi's privacy and consent terms.
+          </p>
+
           <button
-            onClick={() => setStep("login")}
+            onClick={handleCreate}
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}
             style={{
-              width: "100%", padding: "15px", borderRadius: 999,
-              border: "2px solid rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.14)",
+              width: "100%", padding: "16px", borderRadius: 999, border: "none",
+              background: "linear-gradient(135deg, #5AB4DC 0%, #3A8DBE 100%)",
               color: "#fff", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 16,
-              cursor: "pointer", transition: "transform 0.08s ease",
+              cursor: "pointer", boxShadow: "0 6px 20px rgba(58,141,190,0.28)",
+              transition: "transform 0.08s ease", marginTop: 4,
             }}
           >
-            Log in
-          </button>
-
-          {/* Divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0" }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.28)" }} />
-            <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "rgba(255,255,255,0.65)" }}>or</span>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.28)" }} />
-          </div>
-
-          {/* Google */}
-          <button
-            onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-            style={{
-              width: "100%", padding: "12px 16px", borderRadius: 14, border: "none",
-              background: "#fff", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14,
-              color: theme.ink, cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 10, transition: "transform 0.08s ease",
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" style={{ flexShrink: 0 }}>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continue with Google
-          </button>
-
-          {/* Apple */}
-          <button
-            onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-            style={{
-              width: "100%", padding: "12px 16px", borderRadius: 14, border: "none",
-              background: "#fff", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14,
-              color: theme.ink, cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 10, transition: "transform 0.08s ease",
-            }}
-          >
-            <svg viewBox="0 0 814 1000" width="16" height="16" fill={theme.ink} style={{ flexShrink: 0 }}>
-              <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.7-57.5-155.4-128.6C46.9 727.5 0 620 0 516.8 0 223.1 190.3 68.6 375.7 68.6c92.3 0 169.1 60.8 226.1 60.8 57 0 147.9-63.2 225.7-63.2 28.7 0 102.7 4.5 155.5 53.8zM543.3 49c-55.6 23.8-100.9 86.8-100.9 152.6 0 8.3 1.3 16.6 2.6 23.2 4.5.6 11.6 1.3 18.6 1.3 49.3 0 99.3-28.7 133.5-83.5 22.5-35.7 36.5-82.1 36.5-125.3 0-7-1.3-14-1.9-17.3-4.5.6-12.1 1.9-18.6 2.6C579 3.2 563.7 27.5 543.3 49z"/>
-            </svg>
-            Continue with Apple
+            Create account
           </button>
         </div>
       </div>
     );
   }
 
-  /* ── FORM (signup or login) ── */
-  const isSignup = step === "signup";
-
-  const handleCreateAccount = () => {
-    if (onSignup) onSignup({ name: formName, email: formEmail, city: formCity, newsletter: formNewsletter });
-    go("privacy");
+  /* ── LOGIN FORM ── */
+  const handleLogin = () => {
+    const users = getStoredUsers();
+    const cred = loginCred.trim().toLowerCase();
+    const found = users.find(u =>
+      u.email?.toLowerCase() === cred || u.username?.toLowerCase() === cred
+    );
+    if (!found || found.password !== loginPass) {
+      setErrors({ login: "Incorrect email / username or password." });
+      return;
+    }
+    if (onSignup) onSignup({ name: found.name, email: found.email, username: found.username });
+    go("home");
   };
-
-  const fi = { // fieldInput style
-    padding: "13px 16px", borderRadius: 14, border: "1.5px solid #C8DCEF",
-    fontFamily: "Nunito, sans-serif", fontSize: 15, color: "#34414E",
-    outline: "none", background: "#fff", boxSizing: "border-box",
-    width: "100%", display: "block", transition: "border-color 0.15s",
-  };
-  const fiFocus = (e) => (e.target.style.borderColor = "#80A0FF");
-  const fiBlur  = (e) => (e.target.style.borderColor = "#C8DCEF");
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#EAF4FB", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#F0F8FD", overflow: "hidden" }}>
 
-      {/* Back button */}
-      <div style={{ flexShrink: 0, padding: "14px 20px 0" }}>
+      {/* Header */}
+      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "14px 20px 0" }}>
         <button
-          onClick={() => setStep("landing")}
-          style={{ background: "#fff", border: "none", borderRadius: 999, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(90,142,200,0.10)" }}
+          onClick={() => { setErrors({}); setStep("landing"); }}
+          style={{ background: "#fff", border: "none", borderRadius: 999, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(90,142,200,0.10)", flexShrink: 0 }}
         >
-          <ChevronLeft size={18} color="#5A8EC8" />
+          <ChevronLeft size={18} color="#3A8DBE" />
         </button>
-      </div>
-
-      {/* Title */}
-      <div style={{ flexShrink: 0, padding: "10px 22px 0" }}>
-        <h2 style={{ fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 24, color: "#34414E", margin: 0 }}>
-          {isSignup ? "Create your account" : "Welcome back"}
-        </h2>
-        <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, color: "#7C8B98", margin: "4px 0 0" }}>
-          {isSignup ? "Join Comi and understand your pet better." : "Sign in to continue."}
-        </p>
+        <div>
+          <h2 style={{ fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 22, color: "#2A3D52", margin: 0 }}>
+            Welcome back
+          </h2>
+          <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#8BA0B4", margin: "1px 0 0" }}>
+            Sign in to continue to Comi.
+          </p>
+        </div>
       </div>
 
       {/* Form card */}
-      <div style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 28, padding: "20px 20px 22px", boxShadow: "0 4px 24px rgba(90,142,200,0.09)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "22px 18px 24px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
-          {isSignup ? (
-            <>
-              <input placeholder="Full name" style={fi} value={formName} onChange={e => setFormName(e.target.value)} onFocus={fiFocus} onBlur={fiBlur} />
-              <input placeholder="Email" type="email" style={fi} value={formEmail} onChange={e => setFormEmail(e.target.value)} onFocus={fiFocus} onBlur={fiBlur} />
-              <input placeholder="Password" type="password" style={fi} value={formPassword} onChange={e => setFormPassword(e.target.value)} onFocus={fiFocus} onBlur={fiBlur} />
-              <input placeholder="Confirm password" type="password" style={fi} value={formConfirmPw} onChange={e => setFormConfirmPw(e.target.value)} onFocus={fiFocus} onBlur={fiBlur} />
-              <input placeholder="Phone number (optional)" type="tel" style={fi} value={formPhone} onChange={e => setFormPhone(e.target.value)} onFocus={fiFocus} onBlur={fiBlur} />
-              <input placeholder="City / location" style={fi} value={formCity} onChange={e => setFormCity(e.target.value)} onFocus={fiFocus} onBlur={fiBlur} />
-              {/* Newsletter opt-in */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", background: "#EAF4FB", borderRadius: 14, border: `1.5px solid ${formNewsletter ? "#5A8EC8" : "#C8DCEF"}`, cursor: "pointer" }}>
-                <div
-                  onClick={() => setFormNewsletter(!formNewsletter)}
-                  style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${formNewsletter ? "#5A8EC8" : "#80A0FF"}`, background: formNewsletter ? "#5A8EC8" : "transparent", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1, cursor: "pointer" }}
-                >
-                  {formNewsletter && <Check size={12} color="#fff" />}
-                </div>
-                <span style={{ fontFamily: "Nunito", fontSize: 13, color: "#34414E", lineHeight: 1.5, flex: 1 }}>
-                  Send me Comi updates, pet wellness tips, and community news.
-                </span>
-              </label>
-              {/* Terms */}
-              <p style={{ fontFamily: "Nunito", fontSize: 12, color: "#7C8B98", margin: "2px 0 0", lineHeight: 1.5, textAlign: "center" }}>
-                By creating an account, you agree to Comi's privacy and consent terms.
-              </p>
-            </>
-          ) : (
-            <>
-              <input placeholder="Email" type="email" style={fi} onFocus={fiFocus} onBlur={fiBlur} />
-              <input placeholder="Password" type="password" style={fi} onFocus={fiFocus} onBlur={fiBlur} />
-            </>
-          )}
-        </div>
+        <input
+          placeholder="Email or username" value={loginCred}
+          onChange={e => { setLoginCred(e.target.value); setErrors({}); }}
+          onFocus={fiFocus} onBlur={fiBlur}
+          style={{ ...fi, borderColor: errors.login ? "#F08080" : "#D4E6F4" }}
+        />
+        <input
+          placeholder="Password" type="password" value={loginPass}
+          onChange={e => { setLoginPass(e.target.value); setErrors({}); }}
+          onFocus={fiFocus} onBlur={fiBlur}
+          style={{ ...fi, borderColor: errors.login ? "#F08080" : "#D4E6F4" }}
+        />
+
+        {errors.login && (
+          <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#E06060", paddingLeft: 2 }}>
+            {errors.login}
+          </span>
+        )}
 
         <button
-          onClick={isSignup ? handleCreateAccount : () => go("home")}
-          onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-          style={{ width: "100%", padding: "16px", borderRadius: 999, border: "none", background: "linear-gradient(135deg, #5AAED4 0%, #3D88BE 100%)", color: "#fff", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 6px 20px rgba(61,136,190,0.30)", marginBottom: 14, transition: "transform 0.08s ease" }}
+          onClick={() => setErrors(p => ({ ...p, forgot: true }))  /* placeholder */}
+          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#5AB4DC", textAlign: "right", padding: 0, marginTop: -4 }}
         >
-          {isSignup ? "Create account" : "Log in"}
+          Forgot password?
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1, height: 1, background: "#E8EFF5" }} />
-          <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#A8B8C8", flexShrink: 0 }}>or continue with</span>
-          <div style={{ flex: 1, height: 1, background: "#E8EFF5" }} />
+        <button
+          onClick={handleLogin}
+          onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+          style={{
+            width: "100%", padding: "16px", borderRadius: 999, border: "none",
+            background: "linear-gradient(135deg, #5AB4DC 0%, #3A8DBE 100%)",
+            color: "#fff", fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 16,
+            cursor: "pointer", boxShadow: "0 6px 20px rgba(58,141,190,0.28)",
+            transition: "transform 0.08s ease",
+          }}
+        >
+          Log in
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, height: 1, background: "#E4EFF8" }} />
+          <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#AABFD0" }}>or continue with</span>
+          <div style={{ flex: 1, height: 1, background: "#E4EFF8" }} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={{ width: "100%", padding: "12px 16px", borderRadius: 14, border: "1.5px solid #DDEAF6", background: "#fff", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14, color: "#34414E", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "transform 0.08s ease" }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" style={{ flexShrink: 0 }}>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
+          <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
+            <GoogleIcon />
             Continue with Google
           </button>
-          <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={{ width: "100%", padding: "12px 16px", borderRadius: 14, border: "1.5px solid #DDEAF6", background: "#fff", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14, color: "#34414E", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "transform 0.08s ease" }}>
-            <svg viewBox="0 0 814 1000" width="16" height="16" fill="#34414E" style={{ flexShrink: 0 }}>
-              <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.7-57.5-155.4-128.6C46.9 727.5 0 620 0 516.8 0 223.1 190.3 68.6 375.7 68.6c92.3 0 169.1 60.8 226.1 60.8 57 0 147.9-63.2 225.7-63.2 28.7 0 102.7 4.5 155.5 53.8zM543.3 49c-55.6 23.8-100.9 86.8-100.9 152.6 0 8.3 1.3 16.6 2.6 23.2 4.5.6 11.6 1.3 18.6 1.3 49.3 0 99.3-28.7 133.5-83.5 22.5-35.7 36.5-82.1 36.5-125.3 0-7-1.3-14-1.9-17.3-4.5.6-12.1 1.9-18.6 2.6C579 3.2 563.7 27.5 543.3 49z"/>
-            </svg>
+          <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
+            <AppleIcon />
             Continue with Apple
           </button>
         </div>
+
+        <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#8BA0B4", textAlign: "center", margin: "4px 0 0" }}>
+          Don't have an account?{" "}
+          <span
+            onClick={() => { setErrors({}); setStep("signup"); }}
+            style={{ color: "#3A8DBE", fontWeight: 700, cursor: "pointer" }}
+          >
+            Sign up
+          </span>
+        </p>
       </div>
     </div>
   );
@@ -4736,7 +4899,7 @@ export default function App() {
       `}</style>
 
       {/* phone frame */}
-      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
+      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(160deg, #D4EDF8 0%, #AACFE9 40%, #7AB8D8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
         {/* faux status bar */}
         <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: screen === "welcome" ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
           <span>9:41</span>
