@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PawPrint, Home, Activity, MessageCircle, MapPin, User,
   Heart, Bell, ChevronLeft, Plus, Send, Sparkles, Check, ChevronDown,
   Camera, Smile, Moon, Zap, Droplets, Utensils, Footprints,
   Scissors, Search, Settings, Shield, ChevronRight, Star, Pencil,
-  UserPlus, QrCode, X,
+  UserPlus, QrCode, X, Lock,
 } from "lucide-react";
 
 import CodyWaving    from "./CodyWaving.png";
@@ -33,6 +33,20 @@ import IconWorry    from "./ICON-WORRY.png";
    4. Screens      -> one function per screen
    5. App          -> state + screen switcher
    ============================================================ */
+
+/* ============================================================
+   PROTOTYPE / DEMO OWNER ACCOUNT
+   ⚠️  Mock auth for demo/testing ONLY.
+   Production: use Firebase Auth, Supabase Auth, or Auth0.
+   Never store real credentials in frontend code.
+   ============================================================ */
+const DEMO_OWNER = {
+  email:    "timothylai0601@gmail.com",
+  password: "ComiDemo123!",
+  name:     "Timothy",
+  username: "timothy",
+  role:     "owner",
+};
 
 /* ---------- 1. THEME ---------- */
 const theme = {
@@ -93,8 +107,9 @@ const START_REMINDERS = [
 const START_POSTS = [
   {
     id: 1, who: "Mia & Luna", petName: "Luna",
+    avatar: "https://images.unsplash.com/photo-1575425186775-b8de9a427e67?auto=format&fit=crop&w=80&q=80",
     text: "Luna learned a new trick today — she can roll over on command! So proud 🥹",
-    likes: 24, tag: "Moment", emoji: "🐩",
+    likes: 24, tag: "Moment",
     comments: [
       { who: "Sam",  text: "That's amazing! What trick? 🎉" },
       { who: "Ari",  text: "Luna is such a superstar 🌟" },
@@ -102,22 +117,25 @@ const START_POSTS = [
   },
   {
     id: 2, who: "Sam", petName: "Biscuit",
+    avatar: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=80&q=80",
     text: "Any tips for a puppy that won't settle at night? Biscuit keeps waking up at 3am 😅",
-    likes: 9, tag: "Question", emoji: "🐶",
+    likes: 9, tag: "Question",
     comments: [
       { who: "Mia",  text: "Try a warm blanket that smells like you! Worked for Luna 🧡" },
     ],
   },
   {
     id: 3, who: "Ari & Mochi", petName: "Mochi",
+    avatar: "https://images.unsplash.com/photo-1606107558-0d25b9a517cb?auto=format&fit=crop&w=80&q=80",
     text: "Found the cutest pet-friendly café downtown ☕ They even have puppuccinos!",
-    likes: 41, tag: "Moment", emoji: "🐱",
+    likes: 41, tag: "Moment",
     comments: [],
   },
   {
     id: 4, who: "Jess & Cooper", petName: "Cooper",
+    avatar: "https://images.unsplash.com/photo-1633722715463-d30f4f325e24?auto=format&fit=crop&w=80&q=80",
     text: "Tip: freeze xylitol-free peanut butter in a Kong toy — keeps Cooper busy for ages 🧊",
-    likes: 33, tag: "Tip", emoji: "🦮",
+    likes: 33, tag: "Tip",
     comments: [
       { who: "Sam",  text: "Game changer! Trying this tonight 😄" },
       { who: "Mia",  text: "Luna goes absolutely wild for this too 😂" },
@@ -379,7 +397,7 @@ const PET_KNOWLEDGE_BASE = [
     safeAnswer: "{petName} might be sleeping more due to a busy day, warm weather, growing (if a puppy), or simply needing rest. Extra sleep by itself is not always a concern.",
     caution: "If extra sleeping is combined with loss of appetite, weakness, unusual breathing, or other changes, it may signal something that needs attention.",
     whenToContactVet: "Contact your vet if the extra sleep lasts more than 2–3 days, or is combined with loss of appetite, weight loss, laboured breathing, pale gums, or any other symptoms.",
-    relatedTips: ["Track {petName}'s sleep with the Comi camera or sleep log.", "Note whether anything changed recently — new food, medication, season, or activity level.", "Puppies and older dogs naturally sleep more."],
+    relatedTips: ["Track {petName}'s sleep with the Comi Smart Dog Tag or sleep log.", "Note whether anything changed recently — new food, medication, season, or activity level.", "Puppies and older dogs naturally sleep more."],
     riskLevel: "medium",
   },
   {
@@ -388,7 +406,7 @@ const PET_KNOWLEDGE_BASE = [
     safeAnswer: "Dogs sleep between 12 and 14 hours a day on average. Daytime naps are completely normal — {petName} is probably just recharging between activities!",
     caution: "Monitor whether naps are balanced with normal activity periods. A dog that barely wakes up all day may need a wellness check.",
     whenToContactVet: "Only contact your vet if napping is combined with other changes like refusing food, weakness, or unusual behaviour.",
-    relatedTips: ["A Comi home camera can help you track daytime rest patterns automatically.", "Young puppies and senior dogs sleep even more than the average — up to 18 hours a day."],
+    relatedTips: ["A Comi Smart Dog Tag can help you track daytime rest patterns automatically.", "Young puppies and senior dogs sleep even more than the average — up to 18 hours a day."],
     riskLevel: "low",
   },
   {
@@ -471,7 +489,7 @@ const PET_KNOWLEDGE_BASE = [
     safeAnswer: "{petName} may struggle when left alone, which is very common in dogs. Separation anxiety shows up as barking, destructive behaviour, or accidents when home alone.",
     caution: "Separation anxiety can worsen without support. A consistent routine and gradual alone-time training helps most dogs.",
     whenToContactVet: "Contact your vet or a certified dog behaviourist if anxiety is severe, {petName} harms themselves, or nothing helps after trying home strategies.",
-    relatedTips: ["Practice short departures and build up gradually.", "Leave a familiar-smelling item with {petName}.", "Puzzle toys and long-lasting chews help keep busy.", "A Comi home camera lets you check on {petName} while you are away."],
+    relatedTips: ["Practice short departures and build up gradually.", "Leave a familiar-smelling item with {petName}.", "Puzzle toys and long-lasting chews help keep busy.", "A Comi Smart Dog Tag lets you track {petName}'s movement and rest while you are away."],
     riskLevel: "medium",
   },
   {
@@ -582,14 +600,14 @@ const PET_KNOWLEDGE_BASE = [
     riskLevel: "low",
   },
 
-  /* ── CAMERA & TRACKING ─────────────────────────────────────────────────── */
+  /* ── SMART DOG TAG & TRACKING ──────────────────────────────────────────── */
   {
-    id: "camera_tracking", category: "camera", title: "How does home camera sleep tracking work?",
-    keywords: ["camera", "home camera", "sleep tracking", "track sleep", "camera tracking", "pet camera", "monitor"],
-    safeAnswer: "A Comi home camera can detect when {petName} is resting or sleeping during the day, helping you see rest patterns without being home.",
-    caution: "This is a prototype that uses simulated activity events. A real camera integration would detect motion patterns to estimate naps and active time.",
+    id: "smart_tag_tracking", category: "smart_tag", title: "How does the Comi Smart Dog Tag work?",
+    keywords: ["smart tag", "dog tag", "qr tag", "smart dog tag", "tracking", "track sleep", "movement tracking", "comi plus", "gps tag"],
+    safeAnswer: "The Comi Smart Dog Tag is a premium accessory that clips to {petName}'s collar. It tracks movement, rest periods, and activity levels throughout the day using motion sensors.",
+    caution: "The Smart Dog Tag is a wellness companion — it estimates rest and activity patterns, but is not a medical device.",
     whenToContactVet: "No vet needed for tracking! But share interesting patterns you notice with your vet at check-up time.",
-    relatedTips: ["Set up the camera in the room where {petName} spends most of the day.", "The camera log shows estimated naps, movement, and rest zones.", "Future Comi updates will improve camera accuracy."],
+    relatedTips: ["The tag syncs automatically when {petName} is home on Wi-Fi.", "View sleep patterns, daily steps, and rest zones in the Wellness screen.", "Comi Plus subscribers get Smart Dog Tag setup and advanced insights."],
     riskLevel: "low",
   },
 ];
@@ -807,6 +825,9 @@ function getMascotImage(pet) {
   if (breed) {
     const found = MASCOT_BREEDS.find(b => b.label === breed);
     if (found) return found.image;
+    // Handles special keys like "cody" that live in mascotMoodAssets but not MASCOT_BREEDS
+    const neutral = mascotMoodAssets[breed]?.neutral;
+    if (neutral) return neutral;
   }
   return ComiMain;
 }
@@ -827,7 +848,7 @@ const MOOD_TO_SLOT = {
      import CorgiFun from "./assets/mascots/corgi/fun.png";
      mascotMoodAssets["Corgi"].fun = CorgiFun;                 */
 const mascotMoodAssets = {
-  "cody":             { fun: CodyWaving, sad: CodyWaving, worry: CodyWaving, sleepy: CodyWaving, thinking: CodyWaving, neutral: CodyWaving },
+  "cody":             { fun: IconFun,    sad: IconSad,    worry: IconWorry,  sleepy: IconSleepy, thinking: IconThinking, neutral: ComiMain },
   "French Bulldog":   { fun: Dog101,     sad: Dog101,     worry: Dog101,     sleepy: Dog101,     thinking: Dog101,     neutral: Dog101     },
   "Corgi":            { fun: Corgi,      sad: Corgi,      worry: Corgi,      sleepy: Corgi,      thinking: Corgi,      neutral: Corgi      },
   "Golden Retriever": { fun: Golden,     sad: Golden,     worry: Golden,     sleepy: Golden,     thinking: Golden,     neutral: Golden     },
@@ -1197,7 +1218,7 @@ function Welcome({ go }) {
         </h1>
       </div>
 
-      {/* Cody — hero, anchored bottom, covers lower ~2/3 */}
+      {/* Hero mascot — anchored bottom, covers lower ~2/3 */}
       <img
         src={CodyWaving}
         alt="Cody"
@@ -1252,7 +1273,7 @@ function Welcome({ go }) {
 }
 
 // 2. Sign Up / Log In
-function Auth({ go, onSignup }) {
+function Auth({ go, onSignup, onDemoLogin }) {
   const [step, setStep] = useState("landing"); // "landing" | "signup" | "login"
 
   // All form state declared upfront (React rules of hooks)
@@ -1268,31 +1289,64 @@ function Auth({ go, onSignup }) {
 
   // Mock user store helpers
   const getStoredUsers = () => {
+    const demoEntry = {
+      username: DEMO_OWNER.username,
+      email:    DEMO_OWNER.email,
+      password: DEMO_OWNER.password,
+      name:     DEMO_OWNER.name,
+      role:     DEMO_OWNER.role,
+    };
     try {
-      const raw = localStorage.getItem("comi_users");
-      const users = raw ? JSON.parse(raw) : [];
-      if (!users.length) {
-        const seeded = [
-          { username: "codydad", email: "cody@example.com", password: "password123", name: "Cody's Dad" },
-          { username: "lunaowner", email: "luna@example.com", password: "password123", name: "Luna's Owner" },
-        ];
-        localStorage.setItem("comi_users", JSON.stringify(seeded));
-        return seeded;
-      }
+      const raw  = localStorage.getItem("comi_users");
+      const base = (raw ? JSON.parse(raw) : null) || [];
+      const hasDemo = base.some(u => u.email?.trim().toLowerCase() === DEMO_OWNER.email.toLowerCase());
+      const users = hasDemo ? base : [...base, demoEntry];
+      localStorage.setItem("comi_users", JSON.stringify(users));
       return users;
-    } catch { return []; }
+    } catch {
+      return [demoEntry];
+    }
   };
   const saveStoredUsers = (users) => {
     try { localStorage.setItem("comi_users", JSON.stringify(users)); } catch {}
+  };
+
+  // Direct demo-account login — bypasses credential checking entirely
+  const handleDemoAccountLogin = () => {
+    console.log("[Comi] Demo account login triggered");
+    try { if (onSignup)    onSignup({ name: DEMO_OWNER.name, email: DEMO_OWNER.email, username: DEMO_OWNER.username, role: DEMO_OWNER.role }); } catch(e) { console.error("[Comi] onSignup error:", e); }
+    try { if (onDemoLogin) onDemoLogin(); } catch(e) { console.error("[Comi] onDemoLogin error:", e); }
+    console.log("[Comi] Navigating to home");
+    go("home");
   };
 
   const press   = (e) => (e.currentTarget.style.transform = "scale(0.97)");
   const release = (e) => (e.currentTarget.style.transform = "scale(1)");
 
   const authAnim = `
-    @keyframes authMascotFloat {
-      0%, 100% { transform: translateY(0px); }
-      50%       { transform: translateY(-12px); }
+    @keyframes codyWalkBody {
+      0%   { transform: translateY(3px)  rotate(-2deg);   }
+      10%  { transform: translateY(1px)  rotate(-1.8deg); }
+      20%  { transform: translateY(-4px) rotate(-0.8deg); }
+      30%  { transform: translateY(-5px) rotate(0deg);    }
+      40%  { transform: translateY(-2px) rotate(0.8deg);  }
+      50%  { transform: translateY(3px)  rotate(2deg);    }
+      60%  { transform: translateY(1px)  rotate(1.8deg);  }
+      70%  { transform: translateY(-4px) rotate(0.8deg);  }
+      80%  { transform: translateY(-5px) rotate(0deg);    }
+      90%  { transform: translateY(-2px) rotate(-0.8deg); }
+      100% { transform: translateY(3px)  rotate(-2deg);   }
+    }
+    @keyframes codyWalkSway {
+      0%   { transform: translateX(-3px); }
+      25%  { transform: translateX(0px);  }
+      50%  { transform: translateX(3px);  }
+      75%  { transform: translateX(0px);  }
+      100% { transform: translateX(-3px); }
+    }
+    @keyframes codyWalkShadow {
+      0%, 50%, 100% { width: 80px; opacity: 0.45; }
+      25%, 75%       { width: 56px; opacity: 0.15; }
     }
   `;
 
@@ -1317,7 +1371,7 @@ function Auth({ go, onSignup }) {
     </svg>
   );
   const AppleIcon = () => (
-    <svg viewBox="0 0 814 1000" width="16" height="16" fill="#34414E" style={{ flexShrink: 0 }}>
+    <svg viewBox="0 0 814 1000" width="15" height="18" fill="#1D1D1F" style={{ flexShrink: 0 }}>
       <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.7-57.5-155.4-128.6C46.9 727.5 0 620 0 516.8 0 223.1 190.3 68.6 375.7 68.6c92.3 0 169.1 60.8 226.1 60.8 57 0 147.9-63.2 225.7-63.2 28.7 0 102.7 4.5 155.5 53.8zM543.3 49c-55.6 23.8-100.9 86.8-100.9 152.6 0 8.3 1.3 16.6 2.6 23.2 4.5.6 11.6 1.3 18.6 1.3 49.3 0 99.3-28.7 133.5-83.5 22.5-35.7 36.5-82.1 36.5-125.3 0-7-1.3-14-1.9-17.3-4.5.6-12.1 1.9-18.6 2.6C579 3.2 563.7 27.5 543.3 49z"/>
     </svg>
   );
@@ -1361,24 +1415,35 @@ function Auth({ go, onSignup }) {
           <div style={{ width: 36 }} />
         </div>
 
-        {/* Mascot — centered in remaining space above card */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "0 0 8px" }}>
-          <img
-            src={CodyWaving}
-            alt="Cody"
-            style={{
-              width: 200, height: "auto", objectFit: "contain",
-              animation: "authMascotFloat 3.2s ease-in-out infinite",
-              pointerEvents: "none", display: "block",
-            }}
-          />
+        {/* Mascot — Cody walking in place */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "0 0 16px", marginLeft: -30 }}>
+          <div style={{ position: "relative", animation: "codyWalkSway 0.8s linear infinite" }}>
+            <img
+              src={CodyWalkAway}
+              alt="Cody walking"
+              style={{
+                width: 320, height: "auto", objectFit: "contain",
+                animation: "codyWalkBody 0.8s linear infinite",
+                transformOrigin: "center 88%",
+                pointerEvents: "none", display: "block",
+              }}
+            />
+            {/* Ground shadow — pulses with each step contact */}
+            <div style={{
+              position: "absolute", bottom: -2, left: "50%",
+              height: 10, borderRadius: "50%",
+              background: "rgba(30,90,150,0.20)",
+              animation: "codyWalkShadow 0.8s linear infinite",
+              pointerEvents: "none",
+            }} />
+          </div>
         </div>
 
         {/* White rounded bottom card */}
         <div style={{
           flexShrink: 0, background: "#fff",
           borderRadius: "28px 28px 0 0",
-          padding: "26px 22px 38px",
+          padding: "12px 22px 22px",
           boxShadow: "0 -6px 32px rgba(80,130,190,0.13)",
         }}>
           {/* Card headline */}
@@ -1398,7 +1463,7 @@ function Auth({ go, onSignup }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {/* Create account — primary */}
             <button
-              onClick={() => setStep("signup")}
+              onClick={() => { setFormName(""); setFormUsername(""); setFormEmail(""); setFormPassword(""); setFormConfirmPw(""); setErrors({}); setStep("signup"); }}
               onMouseDown={press} onMouseUp={release} onMouseLeave={release}
               style={{
                 width: "100%", padding: "16px", borderRadius: 999, border: "none",
@@ -1423,6 +1488,20 @@ function Auth({ go, onSignup }) {
               }}
             >
               Log in
+            </button>
+
+            {/* Demo quick-login */}
+            <button
+              onClick={handleDemoAccountLogin}
+              onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+              style={{
+                width: "100%", padding: "14px", borderRadius: 999,
+                border: "2px dashed #A8D4EA", background: "rgba(168,212,234,0.12)",
+                color: "#3A8DBE", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14,
+                cursor: "pointer", transition: "transform 0.08s ease",
+              }}
+            >
+              Use demo account
             </button>
 
             {/* Divider */}
@@ -1501,11 +1580,11 @@ function Auth({ go, onSignup }) {
         </div>
 
         {/* Scrollable form */}
-        <div style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "20px 18px 22px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+        <form autoComplete="off" onSubmit={e => { e.preventDefault(); handleCreate(); }} style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "20px 18px 22px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
           {/* Full name */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <input placeholder="Full name" value={formName}
+            <input placeholder="Full name" name="fullName" autoComplete="off" value={formName}
               onChange={e => { setFormName(e.target.value); clearErr("name"); }}
               onFocus={fiFocus} onBlur={fiBlur}
               style={{ ...fi, borderColor: fieldBorder("name") }} />
@@ -1514,7 +1593,7 @@ function Auth({ go, onSignup }) {
 
           {/* Username */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <input placeholder="Username" value={formUsername}
+            <input placeholder="Username" name="username" autoComplete="off" value={formUsername}
               onChange={e => { setFormUsername(e.target.value); clearErr("username"); }}
               onFocus={fiFocus} onBlur={fiBlur}
               style={{ ...fi, borderColor: fieldBorder("username") }} />
@@ -1523,7 +1602,7 @@ function Auth({ go, onSignup }) {
 
           {/* Email */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <input placeholder="Email" type="email" value={formEmail}
+            <input placeholder="Email" type="email" name="signupEmail" autoComplete="new-email" value={formEmail}
               onChange={e => { setFormEmail(e.target.value); clearErr("email"); }}
               onFocus={fiFocus} onBlur={fiBlur}
               style={{ ...fi, borderColor: fieldBorder("email") }} />
@@ -1532,7 +1611,7 @@ function Auth({ go, onSignup }) {
 
           {/* Password */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <input placeholder="Password" type="password" value={formPassword}
+            <input placeholder="Password" type="password" name="newPassword" autoComplete="new-password" value={formPassword}
               onChange={e => { setFormPassword(e.target.value); clearErr("password"); }}
               onFocus={fiFocus} onBlur={fiBlur}
               style={{ ...fi, borderColor: fieldBorder("password") }} />
@@ -1541,7 +1620,7 @@ function Auth({ go, onSignup }) {
 
           {/* Confirm password */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <input placeholder="Confirm password" type="password" value={formConfirmPw}
+            <input placeholder="Confirm password" type="password" name="confirmPassword" autoComplete="new-password" value={formConfirmPw}
               onChange={e => { setFormConfirmPw(e.target.value); clearErr("confirm"); }}
               onFocus={fiFocus} onBlur={fiBlur}
               style={{ ...fi, borderColor: fieldBorder("confirm") }} />
@@ -1576,7 +1655,7 @@ function Auth({ go, onSignup }) {
           </p>
 
           <button
-            onClick={handleCreate}
+            type="submit"
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}
             style={{
               width: "100%", padding: "16px", borderRadius: 999, border: "none",
@@ -1588,23 +1667,54 @@ function Auth({ go, onSignup }) {
           >
             Create account
           </button>
-        </div>
+        </form>
       </div>
     );
   }
 
   /* ── LOGIN FORM ── */
   const handleLogin = () => {
-    const users = getStoredUsers();
     const cred = loginCred.trim().toLowerCase();
-    const found = users.find(u =>
-      u.email?.toLowerCase() === cred || u.username?.toLowerCase() === cred
-    );
-    if (!found || found.password !== loginPass) {
-      setErrors({ login: "Incorrect email / username or password." });
+    const pass = loginPass.trim();
+    console.log("[Comi] handleLogin called. cred:", cred);
+
+    if (!cred || !pass) {
+      setErrors({ login: "Please enter your email/username and password." });
       return;
     }
-    if (onSignup) onSignup({ name: found.name, email: found.email, username: found.username });
+
+    // Accept common typo variants for the demo email
+    const DEMO_EMAIL_VARIANTS = [
+      DEMO_OWNER.email.toLowerCase(),
+      "tmothylai0601@gmail.com",
+    ];
+    const isDemoEmail    = DEMO_EMAIL_VARIANTS.includes(cred);
+    const isDemoUsername = cred === DEMO_OWNER.username.toLowerCase();
+
+    console.log("[Comi] Demo match — email:", isDemoEmail, "username:", isDemoUsername);
+
+    if (isDemoEmail || isDemoUsername) {
+      if (pass !== DEMO_OWNER.password) {
+        setErrors({ login: "Incorrect password." });
+        return;
+      }
+      console.log("[Comi] Demo credentials valid — logging in");
+      handleDemoAccountLogin();
+      return;
+    }
+
+    // Regular accounts via localStorage
+    let users = [];
+    try { users = getStoredUsers(); } catch(e) { console.error("[Comi] getStoredUsers error:", e); }
+    console.log("[Comi] Checking", users.length, "stored users");
+    const found = users.find(u =>
+      u.email?.trim().toLowerCase() === cred ||
+      u.username?.trim().toLowerCase() === cred
+    );
+    if (!found) { setErrors({ login: "Account not found." }); return; }
+    if (found.password !== pass) { setErrors({ login: "Incorrect password." }); return; }
+    console.log("[Comi] Regular user found:", found.name, "— logging in");
+    try { if (onSignup) onSignup({ name: found.name, email: found.email, username: found.username }); } catch {}
     go("home");
   };
 
@@ -1630,16 +1740,19 @@ function Auth({ go, onSignup }) {
       </div>
 
       {/* Form card */}
-      <div style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "22px 18px 24px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
+      <form
+        onSubmit={e => { e.preventDefault(); handleLogin(); }}
+        style={{ flex: 1, margin: "14px 16px 16px", background: "#fff", borderRadius: 24, padding: "22px 18px 24px", boxShadow: "0 4px 20px rgba(90,142,200,0.08)", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}
+      >
 
         <input
-          placeholder="Email or username" value={loginCred}
+          placeholder="Email or username" name="loginIdentifier" autoComplete="username" value={loginCred}
           onChange={e => { setLoginCred(e.target.value); setErrors({}); }}
           onFocus={fiFocus} onBlur={fiBlur}
           style={{ ...fi, borderColor: errors.login ? "#F08080" : "#D4E6F4" }}
         />
         <input
-          placeholder="Password" type="password" value={loginPass}
+          placeholder="Password" type="password" name="loginPassword" autoComplete="current-password" value={loginPass}
           onChange={e => { setLoginPass(e.target.value); setErrors({}); }}
           onFocus={fiFocus} onBlur={fiBlur}
           style={{ ...fi, borderColor: errors.login ? "#F08080" : "#D4E6F4" }}
@@ -1652,14 +1765,15 @@ function Auth({ go, onSignup }) {
         )}
 
         <button
-          onClick={() => setErrors(p => ({ ...p, forgot: true }))  /* placeholder */}
+          type="button"
+          onClick={() => setErrors(p => ({ ...p, forgot: true }))}
           style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#5AB4DC", textAlign: "right", padding: 0, marginTop: -4 }}
         >
           Forgot password?
         </button>
 
         <button
-          onClick={handleLogin}
+          type="submit"
           onMouseDown={press} onMouseUp={release} onMouseLeave={release}
           style={{
             width: "100%", padding: "16px", borderRadius: 999, border: "none",
@@ -1672,6 +1786,21 @@ function Auth({ go, onSignup }) {
           Log in
         </button>
 
+        {/* Demo quick-login — always works for prototype testing */}
+        <button
+          type="button"
+          onClick={handleDemoAccountLogin}
+          onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+          style={{
+            width: "100%", padding: "13px", borderRadius: 999,
+            border: "2px dashed #A8D4EA", background: "rgba(168,212,234,0.12)",
+            color: "#3A8DBE", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14,
+            cursor: "pointer", transition: "transform 0.08s ease",
+          }}
+        >
+          Use demo account
+        </button>
+
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, height: 1, background: "#E4EFF8" }} />
           <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#AABFD0" }}>or continue with</span>
@@ -1679,11 +1808,11 @@ function Auth({ go, onSignup }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
+          <button type="button" onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
             <GoogleIcon />
             Continue with Google
           </button>
-          <button onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
+          <button type="button" onMouseDown={press} onMouseUp={release} onMouseLeave={release} style={socialBtnStyle}>
             <AppleIcon />
             Continue with Apple
           </button>
@@ -1698,7 +1827,7 @@ function Auth({ go, onSignup }) {
             Sign up
           </span>
         </p>
-      </div>
+      </form>
     </div>
   );
 }
@@ -1710,21 +1839,19 @@ function PrivacyScreen({ go }) {
     <div style={{ padding: 24, display: "flex", flexDirection: "column", minHeight: "100%", gap: 16 }}>
       <TopBar title="Before we start" onBack={() => go("auth")} />
       <div style={{ textAlign: "center", marginBottom: 4 }}>
-        <div style={{ fontSize: 52, lineHeight: 1 }}>🔒</div>
-        <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "8px 0 0" }}>
+        <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: 0 }}>
           A quick note about how Comi works
         </p>
       </div>
 
       <Card>
         {[
-          ["🐾", "Comi stores your pet's profile and wellness check-ins to help you notice patterns over time."],
-          ["💬", "Comi offers friendly everyday guidance — not medical advice."],
-          ["🏥", "For any health concerns, please contact your vet. Your vet knows your pet best!"],
-          ["🔧", "This is a prototype. Please don't enter real sensitive personal information."],
-        ].map(([icon, text], i) => (
-          <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 0", borderBottom: i < 3 ? `1px solid ${theme.line}` : "none" }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
+          "Comi stores your pet's profile and wellness check-ins to help you notice patterns over time.",
+          "Comi offers friendly everyday guidance — not medical advice.",
+          "For any health concerns, please contact your vet. Your vet knows your pet best!",
+          "This is a prototype. Please don't enter real sensitive personal information.",
+        ].map((text, i) => (
+          <div key={i} style={{ padding: "10px 0", borderBottom: i < 3 ? `1px solid ${theme.line}` : "none" }}>
             <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.ink, margin: 0, lineHeight: 1.55 }}>{text}</p>
           </div>
         ))}
@@ -2057,7 +2184,7 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
         {mascotBreed && (
           <div style={{ background: "linear-gradient(135deg, #EAF4FB 0%, #D6EEF9 100%)", borderRadius: 24, padding: "18px 18px 16px", marginBottom: 18, border: "2px solid #80A0FF", textAlign: "center" }}>
             <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#5A8EC8", margin: "0 0 10px" }}>
-              Meet {pet.name || "your pet"}'s Comi mascot ✨
+              Meet {pet.name || "your pet"}'s Comi mascot
             </p>
             <img src={mascotPreviewImg} alt={mascotBreed} style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 10 }} />
             <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
@@ -2128,64 +2255,71 @@ function HomeScreen({ go, pet, todayMood, reminders, petPhoto, onOpenPetSwitcher
         </button>
       </div>
 
-      {/* ── Mascot + headline ── */}
+      {/* ── Mascot + headline + chips + action — all in one flex column ── */}
       <div style={{
         flex: 1,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "8px 24px 4px",
+        overflow: "hidden",
       }}>
-        <img
-          src={getMascotMoodImage(pet, todayMood?.key)}
-          alt={pet.name}
-          style={{ width: 280, height: 280, objectFit: "contain" }}
-        />
+
+        {/* Mascot — takes remaining vertical space, capped so chips/button always stay in view */}
+        <div style={{ flex: 1, minHeight: 0, maxHeight: 382, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <img
+            src={getMascotMoodImage(pet, todayMood?.key)}
+            alt={pet.name}
+            style={{ width: 420, height: 420, maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transform: "translateX(-10px)" }}
+          />
+        </div>
+
+        {/* Headline */}
         <h1 style={{
+          flexShrink: 0,
           fontFamily: "Quicksand, sans-serif", fontWeight: 700, fontSize: 26,
-          color: "#fff", textAlign: "center", margin: "14px 0 0", lineHeight: 1.24,
+          color: "#fff", textAlign: "center", margin: "4px 24px 0", lineHeight: 1.24,
         }}>
           {todayMood
             ? `${pet.name} is feeling ${todayMood.label.toLowerCase()} today!`
             : `How is ${pet.name} feeling today?`}
         </h1>
+
+        {/* Mood strength */}
         {todayMood?.intensity && (
-          <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, color: "rgba(255,255,255,0.72)", margin: "6px 0 0" }}>
+          <p style={{ flexShrink: 0, fontFamily: "Nunito, sans-serif", fontSize: 14, color: "rgba(255,255,255,0.72)", margin: "4px 0 0" }}>
             Mood strength: {todayMood.intensity}/10
           </p>
         )}
-      </div>
 
-      {/* ── Quick-access feature chips ── */}
-      <div style={{ flexShrink: 0, padding: "0 14px 10px", display: "flex", gap: 7, overflowX: "auto" }}>
-        {[
-          { label: "AI Insights", screen: "ai" },
-          { label: "Behaviour",   screen: "behavior" },
-          { label: "Wellness",    screen: "insights" },
-          { label: "Reminders",   screen: "reminders" },
-          { label: "Explore",     screen: "explore" },
-        ].map(({ label, screen }) => (
-          <button
-            key={screen}
-            onClick={() => go(screen)}
-            onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-            style={{
-              flexShrink: 0, padding: "8px 16px", borderRadius: 999,
-              background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.38)",
-              fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff",
-              cursor: "pointer", whiteSpace: "nowrap", transition: "transform 0.08s ease",
-              letterSpacing: "0.01em",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        {/* ── Quick-access feature chips ── */}
+        <div style={{ flexShrink: 0, padding: "8px 14px 0", alignSelf: "stretch", display: "flex", gap: 7, overflowX: "auto" }}>
+          {[
+            { label: "AI Insights", screen: "ai" },
+            { label: "Behaviour",   screen: "behavior" },
+            { label: "Wellness",    screen: "insights" },
+            { label: "Reminders",   screen: "reminders" },
+            { label: "Places",      screen: "community" },
+          ].map(({ label, screen }) => (
+            <button
+              key={screen}
+              onClick={() => go(screen)}
+              onMouseDown={press} onMouseUp={release} onMouseLeave={release}
+              style={{
+                flexShrink: 0, padding: "8px 16px", borderRadius: 999,
+                background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.38)",
+                fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff",
+                cursor: "pointer", whiteSpace: "nowrap", transition: "transform 0.08s ease",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {/* ── Mood chips or update button ── */}
-      {todayMood ? (
-        <div style={{ flexShrink: 0, padding: "0 22px 20px" }}>
+        {/* ── Mood update action ── */}
+        <div style={{ flexShrink: 0, padding: "10px 22px 20px", alignSelf: "stretch" }}>
           <button
             onClick={() => go("mood")}
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}
@@ -2196,32 +2330,10 @@ function HomeScreen({ go, pet, todayMood, reminders, petPhoto, onOpenPetSwitcher
               cursor: "pointer", transition: "transform 0.08s ease",
             }}
           >
-            Update today's mood
+            {todayMood ? "Update today's mood" : "Log today's mood"}
           </button>
         </div>
-      ) : (
-        <div style={{ flexShrink: 0, padding: "0 12px 20px", display: "flex", gap: 6 }}>
-          {MOOD_ICONS.map(({ key, label, src }) => (
-            <button
-              key={key}
-              onClick={() => go("mood")}
-              onMouseDown={press} onMouseUp={release} onMouseLeave={release}
-              style={{
-                flex: 1,
-                background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.32)",
-                borderRadius: 20, padding: "12px 2px 10px", cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                transition: "transform 0.08s ease",
-              }}
-            >
-              <img src={src} alt={label} style={{ width: 52, height: 52, objectFit: "contain" }} />
-              <span style={{ fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 11, color: "#fff" }}>
-                {label}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -2269,10 +2381,10 @@ function getPetMoodHistory(pet) {
 }
 
 // 5. Daily Mood Check-In
-function MoodScreen({ go, pet, saveMood }) {
-  const [picked,        setPicked]        = useState(null);
-  const [moodIntensity, setMoodIntensity] = useState(5);
-  const [note,          setNote]          = useState("");
+function MoodScreen({ go, pet, saveMood, initialEntry, onClearEdit }) {
+  const [picked,        setPicked]        = useState(initialEntry?.key || null);
+  const [moodIntensity, setMoodIntensity] = useState(initialEntry?.intensity ?? 5);
+  const [note,          setNote]          = useState(initialEntry?.note || "");
 
   const moodEntry  = MOODS.find((m) => m.key === picked);
   const isNegative = moodEntry?.category === "negative";
@@ -2280,7 +2392,8 @@ function MoodScreen({ go, pet, saveMood }) {
   const handleSave = () => {
     if (!picked) return;
     saveMood({ ...moodEntry, intensity: moodIntensity, note, savedAt: new Date().toISOString() });
-    go("home");
+    if (onClearEdit) onClearEdit();
+    go(initialEntry ? "mood_calendar" : "home");
   };
 
   const today   = new Date();
@@ -2366,19 +2479,13 @@ function MoodScreen({ go, pet, saveMood }) {
         {/* 2-column wellness mini-cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
           <div style={{ background: "#FDE9D5", borderRadius: 18, padding: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
-              <Moon size={12} color={theme.ink} strokeWidth={2.5} />
-              <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ink, opacity: 0.65 }}>Sleep last night</span>
-            </div>
+            <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ink, opacity: 0.65, display: "block", marginBottom: 5 }}>Sleep last night</span>
             <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 24, color: theme.ink, margin: 0 }}>
               {sleepHours ? `${sleepHours}h` : <span style={{ fontSize: 18, opacity: 0.35 }}>—</span>}
             </p>
           </div>
           <div style={{ background: "#E8E4F7", borderRadius: 18, padding: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
-              <Heart size={12} color={theme.ink} strokeWidth={2.5} />
-              <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ink, opacity: 0.65 }}>Mood strength</span>
-            </div>
+            <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ink, opacity: 0.65, display: "block", marginBottom: 5 }}>Mood strength</span>
             <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 24, color: theme.ink, margin: 0 }}>
               {picked ? `${moodIntensity}/10` : <span style={{ fontSize: 18, opacity: 0.35 }}>—</span>}
             </p>
@@ -2422,20 +2529,172 @@ function MoodScreen({ go, pet, saveMood }) {
   );
 }
 
+// ── Wellness page chart helpers ───────────────────────────────────────────
+
+function getCustomMoodIcon(moodKey) {
+  const slot = MOOD_TO_SLOT[moodKey] || null;
+  if (slot === "fun")      return IconFun;
+  if (slot === "sad")      return IconSad;
+  if (slot === "sleepy")   return IconSleepy;
+  if (slot === "thinking") return IconThinking;
+  if (slot === "worry")    return IconWorry;
+  return null;
+}
+
+function WellnessLineChart({ data, color, h }) {
+  const W = 220, H = h || 54;
+  const col = color || "#5A8EC8";
+  const valid = data.filter(v => v !== null);
+  if (!valid.length) return (
+    <div style={{ height: H, display: "grid", placeItems: "center" }}>
+      <span style={{ fontFamily: "Nunito", fontSize: 10, color: "#7C8B98" }}>No data yet</span>
+    </div>
+  );
+  const pts = data.map((v, i) => ({
+    x: data.length === 1 ? W / 2 : 4 + (i / (data.length - 1)) * (W - 8),
+    y: v !== null ? 4 + (1 - v / 10) * (H - 8) : null,
+  }));
+  let d = "";
+  pts.forEach((p, i) => {
+    if (p.y === null) return;
+    d += (d === "" || pts[i - 1]?.y === null) ? `M${p.x},${p.y}` : `L${p.x},${p.y}`;
+  });
+  const vp = pts.filter(p => p.y !== null);
+  const area = vp.length > 1
+    ? `M${vp[0].x},${H} ${vp.map(p => `L${p.x},${p.y}`).join("")} L${vp[vp.length - 1].x},${H}Z`
+    : "";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+      {area && <path d={area} fill={col} opacity={0.12} />}
+      {d && <path d={d} fill="none" stroke={col} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
+      {vp.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill="#fff" stroke={col} strokeWidth={2} />)}
+    </svg>
+  );
+}
+
+function WellnessBarChart({ data, labels, color, h }) {
+  const W = 220, H = h || 54;
+  const col = color || "#93C5E0";
+  const max = Math.max(...data, 1);
+  const n = data.length, gap = 3;
+  const bw = (W - (n - 1) * gap) / n;
+  return (
+    <svg viewBox={`0 0 ${W} ${H + 14}`} width="100%">
+      {data.map((v, i) => {
+        const bh = Math.max((v / max) * H, 3);
+        const x = i * (bw + gap), y = H - bh;
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={bw} height={bh} rx={3} fill={col} opacity={0.85} />
+            {labels && <text x={x + bw / 2} y={H + 11} textAnchor="middle" fontSize={8} fill="#7C8B98" fontFamily="Nunito">{labels[i]}</text>}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function WellnessDonutChart({ segments, size }) {
+  const sz = size || 76;
+  const total = segments.reduce((s, sg) => s + sg.value, 0);
+  if (!total) return null;
+  const cx = sz / 2, cy = sz / 2, r = sz * 0.4, inner = sz * 0.25;
+  if (segments.length === 1) return (
+    <svg viewBox={`0 0 ${sz} ${sz}`} width={sz} height={sz} style={{ flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={r} fill={segments[0].color} />
+      <circle cx={cx} cy={cy} r={inner} fill="#fff" />
+      <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight="700" fill="#34414E" fontFamily="Quicksand">{total}</text>
+    </svg>
+  );
+  let ang = -Math.PI / 2;
+  const arcs = segments.map(sg => {
+    const sw = (sg.value / total) * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
+    ang += sw;
+    const x2 = cx + r * Math.cos(ang), y2 = cy + r * Math.sin(ang);
+    return { d: `M${cx},${cy}L${x1},${y1}A${r},${r},0,${sw > Math.PI ? 1 : 0},1,${x2},${y2}Z`, color: sg.color };
+  });
+  return (
+    <svg viewBox={`0 0 ${sz} ${sz}`} width={sz} height={sz} style={{ flexShrink: 0 }}>
+      {arcs.map((a, i) => <path key={i} d={a.d} fill={a.color} />)}
+      <circle cx={cx} cy={cy} r={inner} fill="#fff" />
+      <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight="700" fill="#34414E" fontFamily="Quicksand">{total}</text>
+    </svg>
+  );
+}
+
+function WellnessPillBarChart({ bars, maxVal, h, showLabels }) {
+  const H  = h || 76;
+  const LH = showLabels ? 16 : 0;
+  const bw = 24, gap = 10;
+  const W  = bars.length * bw + (bars.length - 1) * gap;
+  const mx = Math.max(maxVal || 0, 1);
+  return (
+    <svg viewBox={`0 0 ${W} ${H + LH}`} width="100%" style={{ display: "block" }}>
+      {bars.map((bar, i) => {
+        const x    = i * (bw + gap);
+        const barH = bar.value > 0 ? Math.max((bar.value / mx) * H, bw) : 0;
+        const y    = H - barH;
+        return (
+          <g key={i}>
+            {/* Background track — full-height light pill */}
+            <rect x={x} y={0} width={bw} height={H} rx={bw / 2} fill={bar.color} opacity={0.16} />
+            {/* Filled amount growing from bottom */}
+            {barH > 0 && (
+              <rect x={x} y={y} width={bw} height={barH} rx={bw / 2} fill={bar.color} />
+            )}
+            {showLabels && (
+              <text x={x + bw / 2} y={H + LH} textAnchor="middle" fontSize={8} fill="#7C8B98" fontFamily="Nunito">
+                {bar.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function WellnessSleepRings({ rings }) {
+  const sz = 28, sw = 4.5;
+  const r  = (sz - sw) / 2;
+  const cx = sz / 2, cy = sz / 2;
+  const circ = 2 * Math.PI * r;
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+      {rings.map((ring, i) => {
+        const pct  = Math.max(0, Math.min(ring.value, 1));
+        const dash = pct * circ;
+        const gap  = circ - dash;
+        return (
+          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <svg viewBox={`0 0 ${sz} ${sz}`} width={sz} height={sz} style={{ transform: "rotate(-90deg)", display: "block" }}>
+              <circle cx={cx} cy={cy} r={r} fill="none" stroke={ring.color} strokeWidth={sw} opacity={0.18} />
+              <circle cx={cx} cy={cy} r={r} fill="none" stroke={ring.color} strokeWidth={sw}
+                strokeDasharray={`${dash} ${gap}`} strokeLinecap="round"
+              />
+            </svg>
+            <span style={{ fontFamily: "Nunito", fontSize: 8, color: "#7C8B98" }}>{ring.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // 5b. Mood Calendar Screen
-function MoodCalendarScreen({ go, pet }) {
-  const today       = new Date();
-  const [viewDate,  setViewDate]  = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [selDay,    setSelDay]    = useState(null);
-  const [rangeTab,  setRangeTab]  = useState("Month");
+function MoodCalendarScreen({ go, pet, onEditEntry }) {
+  const today      = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selDay,   setSelDay]   = useState(null);
+  const [rangeTab, setRangeTab] = useState("Month");
 
   const history = getPetMoodHistory(pet);
 
-  // also include today's mood
   const fullHistory = (() => {
     const todayStr = today.toISOString().split("T")[0];
     if (!pet.todayMood) return history;
-    const already  = history.find(h => h.date === todayStr);
+    const already = history.find(h => h.date === todayStr);
     if (already) return history;
     return [...history, { ...pet.todayMood, date: todayStr }];
   })();
@@ -2444,48 +2703,126 @@ function MoodCalendarScreen({ go, pet }) {
   const month = viewDate.getMonth();
   const monthName = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  const daysInMonth   = new Date(year, month + 1, 0).getDate();
-  const firstDayOfWk  = new Date(year, month, 1).getDay();
+  const daysInMonth  = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWk = new Date(year, month, 1).getDay();
 
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
-  const dateStr = (d) => `${year}-${String(month + 1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const dateStr = (d) => `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const moodFor = (d) => fullHistory.find(h => h.date === dateStr(d)) || null;
 
-  // cells = leading blanks + day numbers
-  const cells = [...Array(firstDayOfWk).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const cells   = [...Array(firstDayOfWk).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const selMood = selDay !== null ? moodFor(selDay) : null;
 
-  const selMood = selDay ? moodFor(selDay) : null;
-
-  // insight data for current month
+  // Month entries
   const monthEntries = fullHistory.filter(h => {
     const d = new Date(h.date);
     return d.getFullYear() === year && d.getMonth() === month;
   });
 
+  // Last 7 days (for week chart data)
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (6 - i));
+    const ds = d.toISOString().split("T")[0];
+    return { date: d, entry: fullHistory.find(h => h.date === ds) || null, label: ["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()] };
+  });
+
+  // Current week Sun–Sat
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+
+  // Period entries (week vs month)
+  const periodEntries = rangeTab === "Week" ? last7.map(d => d.entry).filter(Boolean) : monthEntries;
+
   const mostCommonMood = (() => {
-    if (!monthEntries.length) return null;
+    if (!periodEntries.length) return null;
     const counts = {};
-    monthEntries.forEach(h => { counts[h.key] = (counts[h.key] || 0) + 1; });
+    periodEntries.forEach(h => { counts[h.key] = (counts[h.key] || 0) + 1; });
     const topKey = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
     return MOODS.find(m => m.key === topKey);
   })();
 
-  const lowSleepDays = 2; // illustrative
+  // ── Chart data ────────────────────────────────────────────────────────
+  const trendData   = last7.map(d => d.entry ? (d.entry.intensity || 5) : null);
+  const trendLabels = last7.map(d => d.label[0]);
 
-  // for week view: show only current week's days
-  const todayWeekStart = new Date(today); todayWeekStart.setDate(today.getDate() - today.getDay());
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(todayWeekStart); d.setDate(todayWeekStart.getDate() + i);
-    return d;
+  const moodSlotColors = { fun: "#FFE08A", sad: "#D8EAFF", sleepy: "#93C5E0", thinking: "#BFE3C8", worry: "#FFEEDD" };
+  const slotNames      = { fun: "Fun", sad: "Sad", sleepy: "Sleepy", thinking: "Thinking", worry: "Worry" };
+  const slotCounts = {};
+  periodEntries.forEach(e => {
+    const slot = MOOD_TO_SLOT[e.key] || "fun";
+    slotCounts[slot] = (slotCounts[slot] || 0) + 1;
   });
+  const donutData = Object.entries(slotCounts).map(([slot, count]) => ({
+    label: slotNames[slot] || slot,
+    color: moodSlotColors[slot] || "#EBF4FC",
+    value: count,
+  }));
+
+  const sleepSample = [7, 8, 6, 9, 5, 8, 7];
+  const petSleepH = pet.sleepData
+    ? parseFloat(((Number(pet.sleepData.night) || 0) + (Number(pet.sleepData.nap) || 0)).toFixed(1))
+    : null;
+  if (petSleepH !== null) sleepSample[6] = petSleepH;
+  const lowSleepDays = sleepSample.filter(h => h < 7).length;
+
+  const behaviourData = [
+    { label: "Playful",    count: 4, color: "#FFB5A7" },
+    { label: "Low energy", count: 2, color: "#93C5E0" },
+    { label: "Worried",    count: 1, color: "#FFEEDD" },
+    { label: "Restless",   count: 1, color: "#D6C7F0" },
+  ];
+
+  // Insight one-liners
+  const validTrend    = trendData.filter(v => v !== null);
+  const avgIntensity  = validTrend.length ? validTrend.reduce((a, b) => a + b, 0) / validTrend.length : 0;
+  const trendInsight  = avgIntensity >= 7 ? "Mostly positive this week." : avgIntensity >= 5 ? "Balanced mood this week." : validTrend.length ? "Some tough days this week." : "Log moods to see trends.";
+  const donutInsight  = donutData.length ? `${[...donutData].sort((a, b) => b.value - a.value)[0].label} most this ${rangeTab.toLowerCase()}.` : "No moods logged yet.";
+  const sleepInsight  = `${lowSleepDays} low-sleep day${lowSleepDays !== 1 ? "s" : ""} this week.`;
+
+  // Mood Mix pill bar data — always show all 5 slots
+  const moodMixPaletteNew = { fun: "#FFD97D", sad: "#AAC4F0", sleepy: "#93C5E0", thinking: "#8DC9A0", worry: "#F4B8C1" };
+  const moodMixBars = ["fun", "sad", "sleepy", "thinking", "worry"].map(slot => ({
+    label: slotNames[slot],
+    value: slotCounts[slot] || 0,
+    color: moodMixPaletteNew[slot],
+  }));
+  const moodMixMax = Math.max(...moodMixBars.map(b => b.value), 1);
+
+  // Sleep ring chart data
+  const avgSleepH      = sleepSample.reduce((a, b) => a + b, 0) / sleepSample.length;
+  const tonightH       = sleepSample[sleepSample.length - 1];
+  const goodNightRatio = sleepSample.filter(h => h >= 7).length / sleepSample.length;
+  const sleepRings = [
+    { value: avgSleepH / 10,   color: "#5A8EC8", label: "Avg" },
+    { value: tonightH / 10,    color: "#93C5E0", label: "Last" },
+    { value: goodNightRatio,   color: "#AAD4F4", label: "Week" },
+  ];
+
+  // Top behaviour label for insight line
+  const topBehaviour = [...behaviourData].sort((a, b) => b.count - a.count)[0]?.label || "Playful";
+
+  const CC = {
+    card:    { background: "#fff", borderRadius: 20, padding: "16px 14px 13px", border: "1.5px solid rgba(128,160,255,0.22)", boxShadow: "0 2px 14px rgba(90,142,200,0.09)" },
+    cardLg:  { background: "#fff", borderRadius: 22, padding: "18px 16px 15px", border: "1.5px solid rgba(128,160,255,0.22)", boxShadow: "0 2px 14px rgba(90,142,200,0.09)" },
+    label:   { fontFamily: "Nunito", fontWeight: 700, fontSize: 9,  color: "#7C8B98", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.06em" },
+    labelLg: { fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: "#7C8B98", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.06em" },
+    insight: { fontFamily: "Nunito", fontSize: 10, color: "#7C8B98", margin: "8px 0 0", lineHeight: 1.3 },
+  };
 
   return (
-    <div style={{ background: theme.mist, minHeight: "100%", paddingBottom: 32 }}>
-      {/* Header */}
-      <div style={{ padding: "16px 22px 12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ background: theme.mist, minHeight: "100%", paddingBottom: 40 }}>
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div style={{ padding: "16px 20px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={() => go("home")} style={{ background: "#fff", border: "none", borderRadius: 999, width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(90,142,200,0.12)", flexShrink: 0 }}>
             <ChevronLeft size={16} color={theme.ocean} />
           </button>
@@ -2493,74 +2830,77 @@ function MoodCalendarScreen({ go, pet }) {
             <h2 style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 17, color: theme.ink, margin: 0 }}>Mood Calendar</h2>
             <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0 }}>{pet.name}</p>
           </div>
-          <button onClick={() => go("mood")} style={{ background: "#fff", border: "none", borderRadius: 12, padding: "6px 12px", cursor: "pointer", boxShadow: "0 2px 8px rgba(90,142,200,0.12)" }}>
-            <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean }}>Check-in</span>
+          <button onClick={() => go("mood")} style={{ background: theme.ocean, border: "none", borderRadius: 14, padding: "7px 14px", cursor: "pointer", boxShadow: "0 2px 10px rgba(90,142,200,0.3)" }}>
+            <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff" }}>+ Check-in</span>
           </button>
         </div>
       </div>
 
-      {/* Week / Month tabs */}
-      <div style={{ display: "flex", gap: 8, padding: "0 22px 12px" }}>
-        {["Week","Month"].map(t => (
-          <button key={t} onClick={() => setRangeTab(t)} style={{
-            padding: "8px 20px", borderRadius: 999, border: "none", cursor: "pointer",
+      {/* ── Week / Month toggle ─────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 8, padding: "0 20px 14px" }}>
+        {["Week", "Month"].map(t => (
+          <button key={t} onClick={() => { setRangeTab(t); setSelDay(null); }} style={{
+            padding: "9px 22px", borderRadius: 999, border: "none", cursor: "pointer",
             background: rangeTab === t ? theme.ocean : "#fff",
             color: rangeTab === t ? "#fff" : theme.slate,
             fontFamily: "Quicksand", fontWeight: 700, fontSize: 13,
-            boxShadow: rangeTab === t ? "0 4px 12px rgba(90,142,200,0.28)" : "0 1px 4px rgba(0,0,0,0.06)",
-            transition: "all 0.1s ease",
+            boxShadow: rangeTab === t ? "0 4px 14px rgba(90,142,200,0.30)" : "0 1px 4px rgba(0,0,0,0.06)",
+            transition: "all 0.15s",
           }}>{t}</button>
         ))}
       </div>
 
       {rangeTab === "Month" ? (
-        /* ── MONTH CALENDAR ── */
+        /* ── MONTH CALENDAR ─────────────────────────────────────────────── */
         <div style={{ margin: "0 14px" }}>
           {/* Month nav */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <button onClick={prevMonth} style={{ background: "#fff", border: "none", borderRadius: 999, width: 32, height: 32, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 1px 6px rgba(90,142,200,0.12)" }}>
+            <button onClick={prevMonth} style={{ background: "#fff", border: "none", borderRadius: 999, width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 1px 6px rgba(90,142,200,0.12)" }}>
               <ChevronLeft size={16} color={theme.ocean} />
             </button>
             <h3 style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: 0 }}>{monthName}</h3>
-            <button onClick={nextMonth} style={{ background: "#fff", border: "none", borderRadius: 999, width: 32, height: 32, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 1px 6px rgba(90,142,200,0.12)" }}>
+            <button onClick={nextMonth} style={{ background: "#fff", border: "none", borderRadius: 999, width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 1px 6px rgba(90,142,200,0.12)" }}>
               <ChevronLeft size={16} color={theme.ocean} style={{ transform: "rotate(180deg)" }} />
             </button>
           </div>
 
-          {/* Calendar grid */}
-          <div style={{ background: "#fff", borderRadius: 24, padding: "14px 10px", boxShadow: "0 4px 20px rgba(90,142,200,0.10)" }}>
+          <div style={{ background: "#fff", borderRadius: 24, padding: "14px 8px 12px", boxShadow: "0 4px 20px rgba(90,142,200,0.10)" }}>
             {/* Day headers */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 6 }}>
-              {["S","M","T","W","T","F","S"].map((d, i) => (
-                <div key={i} style={{ textAlign: "center", fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.slate, padding: "0 0 4px" }}>{d}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 5 }}>
+              {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d, i) => (
+                <div key={i} style={{ textAlign: "center", fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.slate }}>{d}</div>
               ))}
             </div>
             {/* Day cells */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "3px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
               {cells.map((day, i) => {
                 if (!day) return <div key={i} />;
-                const mood     = moodFor(day);
-                const isToday  = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-                const isSel    = day === selDay;
+                const mood    = moodFor(day);
+                const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const isSel   = day === selDay;
+                const icon    = mood ? getCustomMoodIcon(mood.key) : null;
                 return (
-                  <button key={i}
-                    onClick={() => setSelDay(day === selDay ? null : day)}
+                  <button key={i} onClick={() => setSelDay(day === selDay ? null : day)}
                     style={{
-                      background: mood ? mood.color : "#F4F8FC",
+                      background: mood ? mood.color + "90" : isSel ? theme.mist : "#F4F8FC",
                       borderRadius: 12,
                       border: isSel ? `2.5px solid ${theme.ocean}` : isToday ? `2px solid ${theme.sky}` : "2px solid transparent",
-                      padding: "5px 2px 4px",
-                      cursor: "pointer",
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                      padding: "4px 1px 3px",
+                      cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                      minHeight: 54,
                       boxShadow: isSel ? "0 2px 10px rgba(90,142,200,0.22)" : "none",
-                      transition: "all 0.1s ease",
+                      transition: "all 0.1s",
                     }}
                   >
-                    {mood
-                      ? <img src={getMascotMoodImage(pet, mood.key)} alt={mood.label} style={{ width: 34, height: 34, objectFit: "contain" }} />
-                      : <div style={{ width: 34, height: 34, display: "grid", placeItems: "center" }}><span style={{ fontSize: 9, color: "#C8D8E8" }}>—</span></div>
+                    {icon
+                      ? <img src={icon} alt={mood.label} style={{ width: 34, height: 34, objectFit: "contain" }} />
+                      : <div style={{ width: 34, height: 34, display: "grid", placeItems: "center" }}>
+                          {isToday
+                            ? <div style={{ width: 6, height: 6, borderRadius: 999, background: theme.sky }} />
+                            : <span style={{ fontSize: 8, color: "#C8D8E8" }}>—</span>}
+                        </div>
                     }
-                    <span style={{ fontFamily: "Nunito", fontSize: 9.5, fontWeight: isToday ? 800 : 500, color: mood ? theme.ink : theme.slate }}>{day}</span>
+                    <span style={{ fontFamily: "Nunito", fontSize: 9, fontWeight: isToday ? 800 : 500, color: mood ? theme.ink : theme.slate }}>{day}</span>
                   </button>
                 );
               })}
@@ -2568,99 +2908,276 @@ function MoodCalendarScreen({ go, pet }) {
           </div>
         </div>
       ) : (
-        /* ── WEEK VIEW ── */
+        /* ── WEEK VIEW ──────────────────────────────────────────────────── */
         <div style={{ margin: "0 14px" }}>
-          <div style={{ background: "#fff", borderRadius: 24, padding: "14px 10px", boxShadow: "0 4px 20px rgba(90,142,200,0.10)" }}>
+          <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 8px", textAlign: "center" }}>
+            {weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {weekDates[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </p>
+          <div style={{ background: "#fff", borderRadius: 24, padding: "14px 8px 16px", boxShadow: "0 4px 20px rgba(90,142,200,0.10)" }}>
+            {/* 7-day row */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
               {weekDates.map((wd, i) => {
-                const dStr  = wd.toISOString().split("T")[0];
-                const mood  = fullHistory.find(h => h.date === dStr) || null;
+                const ds    = wd.toISOString().split("T")[0];
+                const mood  = fullHistory.find(h => h.date === ds) || null;
                 const isTdy = wd.toDateString() === today.toDateString();
-                const isSel = selDay && wd.getDate() === selDay && wd.getMonth() === month;
+                const isSel = selDay !== null && wd.getDate() === selDay && wd.getMonth() === viewDate.getMonth();
+                const icon  = mood ? getCustomMoodIcon(mood.key) : null;
                 return (
                   <button key={i}
                     onClick={() => { setViewDate(new Date(wd.getFullYear(), wd.getMonth(), 1)); setSelDay(isSel ? null : wd.getDate()); }}
                     style={{
-                      background: mood ? mood.color : "#F4F8FC",
-                      borderRadius: 14, border: isSel ? `2.5px solid ${theme.ocean}` : isTdy ? `2px solid ${theme.sky}` : "2px solid transparent",
-                      padding: "8px 3px 6px", cursor: "pointer",
+                      background: mood ? mood.color + "90" : "#F4F8FC",
+                      borderRadius: 14,
+                      border: isSel ? `2.5px solid ${theme.ocean}` : isTdy ? `2px solid ${theme.sky}` : "2px solid transparent",
+                      padding: "8px 2px 6px", cursor: "pointer",
                       display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                      transition: "all 0.1s",
                     }}
                   >
-                    <span style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate }}>
-                      {["S","M","T","W","T","F","S"][wd.getDay()]}
+                    <span style={{ fontFamily: "Nunito", fontSize: 9, fontWeight: 700, color: theme.slate }}>
+                      {["Su","Mo","Tu","We","Th","Fr","Sa"][wd.getDay()]}
                     </span>
-                    {mood
-                      ? <img src={getMascotMoodImage(pet, mood.key)} alt={mood.label} style={{ width: 40, height: 40, objectFit: "contain" }} />
-                      : <div style={{ width: 40, height: 40, display: "grid", placeItems: "center" }}><span style={{ fontSize: 10, color: "#C8D8E8" }}>—</span></div>
+                    {icon
+                      ? <img src={icon} alt={mood.label} style={{ width: 42, height: 42, objectFit: "contain" }} />
+                      : <div style={{ width: 42, height: 42, display: "grid", placeItems: "center" }}>
+                          <span style={{ fontSize: 10, color: "#C8D8E8" }}>—</span>
+                        </div>
                     }
-                    <span style={{ fontFamily: "Nunito", fontWeight: isTdy ? 800 : 500, fontSize: 11, color: mood ? theme.ink : theme.slate }}>{wd.getDate()}</span>
+                    <span style={{ fontFamily: "Nunito", fontWeight: isTdy ? 800 : 500, fontSize: 11, color: mood ? theme.ink : theme.slate }}>
+                      {wd.getDate()}
+                    </span>
                   </button>
                 );
               })}
             </div>
+            {/* Weekly mood trend mini chart */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${theme.line}` }}>
+              <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.slate, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Mood strength this week
+              </p>
+              <WellnessLineChart data={trendData} color={theme.ocean} h={44} />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                {trendLabels.map((l, i) => (
+                  <span key={i} style={{ fontFamily: "Nunito", fontSize: 8, color: theme.slate, flex: 1, textAlign: "center" }}>{l}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Day detail sheet */}
-      {selDay && (
-        <div style={{ margin: "12px 14px 0", background: selMood?.color || "#fff", borderRadius: 22, padding: "16px 18px", boxShadow: "0 4px 16px rgba(90,142,200,0.10)", border: `1.5px solid #80A0FF` }}>
-          <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 2px" }}>
-            {new Date(dateStr(selDay) + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-          </p>
-          {selMood ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-              <img src={getMascotMoodImage(pet, selMood.key)} alt={selMood.label} style={{ width: 60, height: 60, objectFit: "contain", flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 18, color: theme.ink, margin: 0 }}>{selMood.label}</p>
-                <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.ink, margin: "2px 0 0", opacity: 0.7 }}>
-                  Strength {selMood.intensity}/10{selMood.note ? ` · "${selMood.note}"` : ""}
-                </p>
-              </div>
+      {/* ── Day detail card ─────────────────────────────────────────────── */}
+      {selDay !== null && (
+        <div style={{
+          margin: "12px 14px 0",
+          background: selMood ? selMood.color + "44" : "#fff",
+          borderRadius: 22, padding: "16px 16px",
+          boxShadow: "0 4px 16px rgba(90,142,200,0.10)",
+          border: "1.5px solid rgba(128,160,255,0.30)",
+        }}>
+          {/* Date row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 2px" }}>
+                {new Date(dateStr(selDay) + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </p>
+              <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0 }}>{pet.name}</p>
             </div>
+            <button onClick={() => setSelDay(null)} style={{ background: "rgba(90,142,200,0.10)", border: "none", borderRadius: 999, width: 28, height: 28, display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 }}>
+              <X size={13} color={theme.slate} />
+            </button>
+          </div>
+
+          {selMood ? (
+            <>
+              {/* Mood row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                {(() => {
+                  const icon = getCustomMoodIcon(selMood.key);
+                  return icon ? <img src={icon} alt={selMood.label} style={{ width: 52, height: 52, objectFit: "contain", flexShrink: 0 }} /> : null;
+                })()}
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 18, color: theme.ink, margin: "0 0 4px" }}>{selMood.label}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ display: "flex", gap: 2 }}>
+                      {Array.from({ length: 10 }, (_, j) => (
+                        <div key={j} style={{ width: 12, height: 5, borderRadius: 999, background: j < (selMood.intensity || 5) ? theme.ocean : theme.line }} />
+                      ))}
+                    </div>
+                    <span style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ocean, fontWeight: 700 }}>{selMood.intensity || 5}/10</span>
+                  </div>
+                </div>
+                <img src={getMascotMoodImage(pet, selMood.key)} alt={selMood.label} style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0, borderRadius: 12 }} />
+              </div>
+
+              {/* Detail rows */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ background: "rgba(255,255,255,0.65)", borderRadius: 12, padding: "8px 12px" }}>
+                  <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.slate, textTransform: "uppercase", letterSpacing: "0.04em" }}>Note · </span>
+                  {selMood.note
+                    ? <span style={{ fontFamily: "Nunito", fontSize: 12, color: theme.ink }}>"{selMood.note}"</span>
+                    : <span style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, fontStyle: "italic" }}>No note added for this day.</span>
+                  }
+                </div>
+                {pet.sleepData ? (
+                  <div style={{ background: "rgba(255,255,255,0.65)", borderRadius: 12, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Moon size={13} color={theme.ocean} />
+                    <span style={{ fontFamily: "Nunito", fontSize: 12, color: theme.ink }}>
+                      Sleep: {((Number(pet.sleepData.night) || 0) + (Number(pet.sleepData.nap) || 0)).toFixed(1)}h
+                      {pet.sleepData.quality ? ` · ${pet.sleepData.quality}` : ""}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Edit entry button */}
+              {onEditEntry && (
+                <button
+                  onClick={() => onEditEntry(selMood)}
+                  style={{
+                    marginTop: 12, width: "100%", padding: "11px", borderRadius: 999,
+                    border: `2px solid ${theme.ocean}`, background: "rgba(255,255,255,0.7)",
+                    color: theme.ocean, fontFamily: "Quicksand", fontWeight: 700, fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Edit entry
+                </button>
+              )}
+            </>
           ) : (
-            <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "8px 0 0" }}>No check-in yet for this day.</p>
+            <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: 0 }}>No check-in yet for this day.</p>
           )}
         </div>
       )}
 
-      {/* Monthly Mood Summary card */}
+      {/* ── Mood Summary banner ─────────────────────────────────────────── */}
       {mostCommonMood && (
-        <div style={{ margin: "12px 14px 0", background: mostCommonMood.color, borderRadius: 22, padding: "18px 20px", display: "flex", gap: 14, alignItems: "center" }}>
+        <div style={{ margin: "12px 14px 0", background: mostCommonMood.color, borderRadius: 22, padding: "16px 18px", display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ink, opacity: 0.65, margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              {rangeTab === "Week" ? "Weekly" : "Monthly"} Mood Summary
+            <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.ink, opacity: 0.65, margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {rangeTab} Summary
             </p>
-            <h3 style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 26, color: theme.ink, margin: "0 0 4px" }}>{mostCommonMood.label}</h3>
+            <h3 style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 22, color: theme.ink, margin: "0 0 4px" }}>{mostCommonMood.label}</h3>
             <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.ink, opacity: 0.7, margin: 0, lineHeight: 1.4 }}>
-              {pet.name} felt {mostCommonMood.label.toLowerCase()} most this {rangeTab === "Week" ? "week" : "month"}. Keep up the good vibes!
+              {pet.name} felt {mostCommonMood.label.toLowerCase()} most this {rangeTab.toLowerCase()}.
             </p>
           </div>
-          <img src={getMascotMoodImage(pet, mostCommonMood.key)} alt={mostCommonMood.label} style={{ width: 72, height: 72, objectFit: "contain", flexShrink: 0 }} />
+          <img src={getMascotMoodImage(pet, mostCommonMood.key)} alt={mostCommonMood.label} style={{ width: 68, height: 68, objectFit: "contain", flexShrink: 0 }} />
         </div>
       )}
 
-      {/* 3 insight cards */}
-      <div style={{ margin: "12px 14px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-        <div style={{ background: "#fff", borderRadius: 18, padding: "12px 10px", border: `1.5px solid #80A0FF`, textAlign: "center" }}>
-          <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.slate, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Mood</p>
-          <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ink, margin: 0, lineHeight: 1.4 }}>
-            {mostCommonMood ? `${pet.name} felt ${mostCommonMood.label.toLowerCase()} most this ${rangeTab.toLowerCase()}.` : "Log moods to see insights."}
-          </p>
+      {/* ── Wellness Insights — flex row: left large, right two stacked ─── */}
+      <div style={{ margin: "14px 14px 0" }}>
+        <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, margin: "0 0 10px" }}>Wellness Insights</p>
+        <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+
+          {/* LEFT col — Mood Mix */}
+          <div style={{ flex: "0 0 57%", minWidth: 0, display: "flex" }}>
+            <div style={{ ...CC.cardLg, flex: 1, display: "flex", flexDirection: "column" }}>
+              <p style={CC.labelLg}>Mood Mix</p>
+              {moodMixBars.some(b => b.value > 0) ? (
+                <>
+                  <div style={{ flex: 1, display: "flex", alignItems: "flex-end" }}>
+                    <WellnessPillBarChart bars={moodMixBars} maxVal={moodMixMax} h={190} showLabels />
+                  </div>
+                  <p style={CC.insight}>{donutInsight}</p>
+                </>
+              ) : (
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0 }}>Log moods to see.</p>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT col — two equal-height cards stacked */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+
+            {/* TOP RIGHT — Sleep (single ring) */}
+            <div style={{ ...CC.card, flex: 1, display: "flex", flexDirection: "column" }}>
+              <p style={CC.label}>Sleep</p>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {(() => {
+                  const sz = 52, sw = 7;
+                  const r  = (sz - sw) / 2;
+                  const cx = sz / 2, cy = sz / 2;
+                  const circ = 2 * Math.PI * r;
+                  const pct  = Math.min(avgSleepH / 10, 1);
+                  const dash = pct * circ;
+                  const gap  = circ - dash;
+                  return (
+                    <div style={{ position: "relative", width: sz, height: sz }}>
+                      <svg viewBox={`0 0 ${sz} ${sz}`} width={sz} height={sz} style={{ transform: "rotate(-90deg)", display: "block" }}>
+                        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#93C5E0" strokeWidth={sw} opacity={0.18} />
+                        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#5A8EC8" strokeWidth={sw}
+                          strokeDasharray={`${dash} ${gap}`} strokeLinecap="round"
+                        />
+                      </svg>
+                      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, lineHeight: 1 }}>{avgSleepH.toFixed(1)}</span>
+                        <span style={{ fontFamily: "Nunito", fontSize: 8, color: theme.slate, lineHeight: 1.5 }}>hrs</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              <p style={CC.insight}>{sleepInsight}</p>
+            </div>
+
+            {/* BOTTOM RIGHT — Behaviour */}
+            <div style={{ ...CC.card, flex: 1, display: "flex", flexDirection: "column" }}>
+              <p style={CC.label}>Behaviour</p>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                {behaviourData.map((b, i) => (
+                  <div key={i}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                      <span style={{ fontFamily: "Nunito", fontSize: 8, color: theme.ink, fontWeight: 600 }}>{b.label}</span>
+                      <span style={{ fontFamily: "Nunito", fontSize: 8, fontWeight: 700, color: theme.slate }}>{b.count}</span>
+                    </div>
+                    <div style={{ background: "#EEF3FA", borderRadius: 999, height: 7 }}>
+                      <div style={{ background: b.color, borderRadius: 999, height: 7, width: `${Math.min((b.count / behaviourData[0].count) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={CC.insight}>{topBehaviour} most often.</p>
+            </div>
+
+          </div>
         </div>
-        <div style={{ background: "#FDE9D5", borderRadius: 18, padding: "12px 10px", textAlign: "center" }}>
-          <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.slate, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Sleep</p>
-          <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ink, margin: 0, lineHeight: 1.4 }}>
-            Sleep was lower on {lowSleepDays} days this {rangeTab.toLowerCase()}.
-          </p>
+      </div>
+
+      {/* ── Comi Plus locked insight cards ──────────────────────────────── */}
+      <div style={{ margin: "18px 14px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, margin: 0 }}>Smart Tag Insights</p>
+          <span style={{ background: "#6E4FC8", color: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 9, padding: "2px 9px", borderRadius: 999 }}>Comi Plus</span>
         </div>
-        <div style={{ background: "#E8E4F7", borderRadius: 18, padding: "12px 10px", textAlign: "center" }}>
-          <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.slate, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Behaviour</p>
-          <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ink, margin: 0, lineHeight: 1.4 }}>
-            Worried behaviour appeared after longer alone time.
-          </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          {[
+            { label: "Sleep Pattern", desc: "Nap cycles & night rest from Smart Tag", color: "#D6C7F0" },
+            { label: "Activity Trend", desc: "Daily steps & movement score", color: "#D6EBF8" },
+            { label: "Rest Zones", desc: "Where {petName} rests most during the day", color: "#BFE3C8" },
+          ].map((card) => (
+            <div key={card.label} style={{
+              flex: 1, background: card.color, borderRadius: 18, padding: "14px 12px",
+              position: "relative", overflow: "hidden", minHeight: 100,
+            }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.45)", backdropFilter: "blur(2px)", borderRadius: 18, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, zIndex: 2 }}>
+                <div style={{ background: "#6E4FC8", borderRadius: 999, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Lock size={10} color="#fff" />
+                  <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: "#fff" }}>Unlock</span>
+                </div>
+              </div>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 11, color: theme.ink, margin: "0 0 3px", position: "relative", zIndex: 1 }}>{card.label}</p>
+              <p style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate, margin: 0, lineHeight: 1.4, position: "relative", zIndex: 1 }}>
+                {card.desc.replace("{petName}", pet.name)}
+              </p>
+            </div>
+          ))}
         </div>
+        <button style={{ width: "100%", marginTop: 12, padding: "11px 0", borderRadius: 999, border: "none", background: "#6E4FC8", fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>
+          Join waitlist for Comi Plus
+        </button>
       </div>
     </div>
   );
@@ -2823,41 +3340,54 @@ function BehaviorScreen({ go, pet, sleepData, saveSleep, onUpdateCamEvents }) {
         )}
       </Card>
 
-      {/* ── Camera section: promo when not connected, data card when connected ── */}
-      {!pet.connectedCamera?.connected ? (
-        /* Not connected — invite user to link a camera */
-        <div style={{
-          borderRadius: theme.radius, padding: 16, marginBottom: 12,
-          border: `2px dashed #80A0FF`, background: "#fff",
-        }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-            <div style={{ background: theme.mist, borderRadius: 12, padding: 8, flexShrink: 0 }}>
-              <Camera size={18} color={theme.ocean} />
+      {/* ── Comi Smart Dog Tag premium promo ── */}
+      {(() => {
+        return (
+          <div style={{
+            borderRadius: 22, padding: "18px 18px 16px", marginBottom: 12,
+            background: "linear-gradient(135deg, #EAF4FB 0%, #D6C7F0 100%)",
+            border: "1.5px solid rgba(130,100,220,0.18)",
+            boxShadow: "0 2px 14px rgba(90,142,200,0.10)",
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 13, marginBottom: 14 }}>
+              <div style={{ background: "rgba(255,255,255,0.8)", borderRadius: 14, padding: 10, flexShrink: 0, boxShadow: "0 2px 8px rgba(110,79,200,0.12)" }}>
+                <QrCode size={20} color="#6E4FC8" strokeWidth={1.5} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                  <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: 0 }}>
+                    Comi Smart Dog Tag
+                  </p>
+                  <span style={{ background: "#6E4FC8", color: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 9, padding: "2px 8px", borderRadius: 999 }}>
+                    Comi Plus
+                  </span>
+                </div>
+                <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, margin: 0, lineHeight: 1.5 }}>
+                  A smart collar tag that tracks {pet.name}'s movement, rest periods, and daily steps — syncs automatically to Wellness.
+                </p>
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 4px" }}>
-                Link Home Camera
-              </p>
-              <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, margin: 0, lineHeight: 1.5 }}>
-                Connect a home pet camera to help Comi estimate naps, resting time, and movement during the day.
-              </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {["GPS-free movement", "Rest detection", "Daily step count"].map((label) => (
+                <div key={label} style={{ background: "rgba(255,255,255,0.65)", borderRadius: 12, padding: "5px 11px" }}>
+                  <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ink }}>{label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              <button style={{ flex: 1, padding: "11px 0", borderRadius: 999, border: "none", background: "#6E4FC8", fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>
+                Join waitlist
+              </button>
+              <button style={{ flex: 1, padding: "11px 0", borderRadius: 999, border: "1.5px solid rgba(130,100,220,0.35)", background: "rgba(255,255,255,0.6)", fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#6E4FC8", cursor: "pointer" }}>
+                Learn more
+              </button>
             </div>
           </div>
-          <button
-            onClick={() => go("camera_setup")}
-            style={{
-              width: "100%", padding: "12px 0", borderRadius: 999, border: "none",
-              background: theme.ocean, fontFamily: "Quicksand", fontWeight: 700,
-              fontSize: 15, color: "#fff", cursor: "pointer",
-            }}
-          >
-            Link camera
-          </button>
-          <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "10px 0 0", lineHeight: 1.5 }}>
-            Camera tracking is optional. This prototype uses simulated activity events and does not store real video.
-          </p>
-        </div>
-      ) : (() => {
+        );
+      })()}
+
+      {/* DEAD CODE PLACEHOLDER — camera connected section removed */}
+      {false && (() => {
         /* Connected — show status, recent event insight, summary grid */
         const events    = pet.cameraEvents || [];
         const cam       = pet.connectedCamera;
@@ -2965,7 +3495,7 @@ function BehaviorScreen({ go, pet, sleepData, saveSleep, onUpdateCamEvents }) {
       <div style={{ height: 18 }} />
       <Button onClick={() => go("home")}>Log today's behavior</Button>
       <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
-        Comi helps you notice patterns. It does not replace your vet. 💙
+        Comi helps you notice patterns. It does not replace your vet.
       </p>
     </div>
   );
@@ -3087,7 +3617,7 @@ function InsightsScreen({ go, pet, sleepData, todayMood }) {
               </p>
               {todayMood.note ? (
                 <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.ink, margin: "3px 0 0", opacity: 0.8, lineHeight: 1.4 }}>
-                  💬 {todayMood.note}
+                  {todayMood.note}
                 </p>
               ) : null}
             </div>
@@ -3118,13 +3648,13 @@ function InsightsScreen({ go, pet, sleepData, todayMood }) {
         </div>
         {hasRealSleep && sleepData.note ? (
           <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "10px 0 0", lineHeight: 1.5 }}>
-            💬 {sleepData.note}
+            {sleepData.note}
           </p>
         ) : null}
       </Card>
 
       <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-        Comi helps you notice patterns. It does not replace your vet. 💙
+        Comi helps you notice patterns. It does not replace your vet.
       </p>
     </div>
   );
@@ -3137,7 +3667,7 @@ function AiScreen({ go, pet, aiHistory, setAiHistory }) {
 
   const defaultMsg = {
     from: "comi",
-    text: `Hi! I'm Comi 🐾 Ask me anything about ${pet.name}'s food, mood, sleep, or behaviour. Tap a question below or type your own!`,
+    text: `Hi! I'm Comi. Ask me anything about ${pet.name}'s food, mood, sleep, or behaviour. Tap a question below or type your own!`,
   };
 
   const messages = aiHistory?.length ? aiHistory : [defaultMsg];
@@ -3171,7 +3701,7 @@ function AiScreen({ go, pet, aiHistory, setAiHistory }) {
         }
       : {
           from: "comi",
-          text: `I'm not fully sure about that yet, but I'm always learning! For health concerns, please contact your vet. You can also try asking about a specific food, mood, or behaviour. 💙`,
+          text: `I'm not fully sure about that yet, but I'm always learning! For health concerns, please contact your vet. You can also try asking about a specific food, mood, or behaviour.`,
           timestamp: new Date().toISOString(),
         };
 
@@ -3530,6 +4060,13 @@ function CommunityAvatar({ post, userPhoto, size = 38 }) {
       </div>
     );
   }
+  if (post.avatar) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #EAF4FB" }}>
+        <img src={post.avatar} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={post.who} />
+      </div>
+    );
+  }
   const PALETTE = ["#B8D9F0", "#FECDD3", "#BFE3C8", "#FFE08A", "#D6C7F0", "#FFB5A7"];
   const bg = PALETTE[(post.id - 1) % PALETTE.length] || theme.mist;
   const initial = isUser ? "Y" : (post.who?.charAt(0)?.toUpperCase() || "?");
@@ -3552,21 +4089,27 @@ const TAG_STYLES = {
 };
 
 const COMMUNITY_GROUPS = [
-  { id: 1, name: "Raw Food Diet Recipes", desc: "Share and discover raw feeding recipes for dogs.", members: 1243, emoji: "🥩", joined: false },
-  { id: 2, name: "French Bulldog Meetups", desc: "Monthly meetups and events for Frenchie owners.", members: 876, emoji: "🐾", joined: false },
-  { id: 3, name: "Small Dog Owners", desc: "Tips, tricks, and community for small breed owners.", members: 2104, emoji: "🐕", joined: false },
-  { id: 4, name: "Dog Events Vancouver", desc: "Local dog events, walks, and pet-friendly spots.", members: 659, emoji: "🌲", joined: false },
-  { id: 5, name: "Puppy Training Tips", desc: "Positive reinforcement training for puppies of all breeds.", members: 3241, emoji: "🎓", joined: false },
-  { id: 6, name: "Dog-Friendly Cafés", desc: "Find and share dog-friendly cafés, restaurants, and patios.", members: 891, emoji: "☕", joined: false },
-  { id: 7, name: "Sleep & Behaviour Help", desc: "Community support for dogs with sleep or anxiety issues.", members: 512, emoji: "😴", joined: false },
-  { id: 8, name: "Groomer Recommendations", desc: "Find and share trusted groomers near you.", members: 734, emoji: "✂️", joined: false },
+  { id: 1, name: "Raw Food Diet Recipes", desc: "Share and discover raw feeding recipes for dogs.", members: 1243, photo: "https://images.unsplash.com/photo-1588943211346-0908a1fb0b01?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 2, name: "French Bulldog Meetups", desc: "Monthly meetups and events for Frenchie owners.", members: 876, photo: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 3, name: "Small Dog Owners", desc: "Tips, tricks, and community for small breed owners.", members: 2104, photo: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 4, name: "Dog Events Vancouver", desc: "Local dog events, walks, and pet-friendly spots.", members: 659, photo: "https://images.unsplash.com/photo-1534361960057-19f4434a4fc6?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 5, name: "Puppy Training Tips", desc: "Positive reinforcement training for puppies of all breeds.", members: 3241, photo: "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 6, name: "Dog-Friendly Cafés", desc: "Find and share dog-friendly cafés, restaurants, and patios.", members: 891, photo: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 7, name: "Sleep & Behaviour Help", desc: "Community support for dogs with sleep or anxiety issues.", members: 512, photo: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=120&q=80", joined: false },
+  { id: 8, name: "Groomer Recommendations", desc: "Find and share trusted groomers near you.", members: 734, photo: "https://images.unsplash.com/photo-1512798262621-e55f18a51c56?auto=format&fit=crop&w=120&q=80", joined: false },
 ];
 
 const SUGGESTED_FRIENDS = [
-  { id: 1, who: "Mia & Luna", breed: "Poodle", emoji: "🐩" },
-  { id: 2, who: "Sam & Biscuit", breed: "Labrador", emoji: "🐶" },
-  { id: 3, who: "Ari & Mochi", breed: "Shiba Inu", emoji: "🦊" },
-  { id: 4, who: "Jess & Cooper", breed: "Golden Retriever", emoji: "🌟" },
+  { id: 1, who: "Mia & Luna", breed: "Poodle", photo: "https://images.unsplash.com/photo-1575425186775-b8de9a427e67?auto=format&fit=crop&w=100&q=80" },
+  { id: 2, who: "Sam & Biscuit", breed: "Labrador", photo: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=100&q=80" },
+  { id: 3, who: "Ari & Mochi", breed: "Shiba Inu", photo: "https://images.unsplash.com/photo-1606107558-0d25b9a517cb?auto=format&fit=crop&w=100&q=80" },
+  { id: 4, who: "Jess & Cooper", breed: "Golden Retriever", photo: "https://images.unsplash.com/photo-1633722715463-d30f4f325e24?auto=format&fit=crop&w=100&q=80" },
+];
+
+const DOG_EVENTS = [
+  { id: 1, title: "Frenchie Meetup", date: "Jul 12", location: "Deer Lake Park", attendees: 24, photo: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=400&q=80" },
+  { id: 2, title: "Puppy Playdate", date: "Jul 19", location: "Central Park", attendees: 18, photo: "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=400&q=80" },
+  { id: 3, title: "Saturday Pack Walk", date: "Jul 26", location: "Burnaby Lake Trail", attendees: 32, photo: "https://images.unsplash.com/photo-1534361960057-19f4434a4fc6?auto=format&fit=crop&w=400&q=80" },
 ];
 
 function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
@@ -3579,263 +4122,471 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
   const [askTag,        setAskTag]        = useState("Moment");
   const [commentOpenId, setCommentOpenId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
-  const [commentPhotos, setCommentPhotos] = useState({});
   const [packFriends,   setPackFriends]   = useState({});
   const [groups,        setGroups]        = useState(COMMUNITY_GROUPS);
-  const [qrOpen,        setQrOpen]        = useState(false);
 
-  const TABS = ["For You", "Friends", "Groups", "Events", "Photos", "Tips"];
+  const TABS = ["For You", "Friends", "Groups", "Events", "Photos", "Places"];
 
-  const like = (id) => setPosts(ps => ps.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
-
+  const like    = (id) => setPosts(ps => ps.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
   const addComment = (id) => {
     const text = (commentInputs[id] || "").trim();
-    const photo = commentPhotos[id] || null;
-    if (!text && !photo) return;
-    setPosts(ps => ps.map(p => p.id === id ? { ...p, comments: [...p.comments, { who: "You", text, photo }] } : p));
+    if (!text) return;
+    setPosts(ps => ps.map(p => p.id === id ? { ...p, comments: [...p.comments, { who: "You", text }] } : p));
     setCommentInputs(ci => ({ ...ci, [id]: "" }));
-    setCommentPhotos(cp => ({ ...cp, [id]: null }));
   };
-
-  const submitPost = () => {
+  const submitPost  = () => {
     if (!askText.trim() && !askPhoto) return;
-    setPosts(ps => [{ id: Date.now(), who: "You", petName: pet.name, text: askText, photo: askPhoto, likes: 0, tag: askTag, emoji: pet.emoji || "🐶", comments: [] }, ...ps]);
+    setPosts(ps => [{ id: Date.now(), who: "You", petName: pet.name, text: askText, photo: askPhoto, likes: 0, tag: askTag, comments: [] }, ...ps]);
     setAskText(""); setAskPhoto(null); setAskOpen(false);
   };
-
   const toggleGroup = (id) => setGroups(gs => gs.map(g => g.id === id ? { ...g, joined: !g.joined } : g));
   const togglePack  = (id) => setPackFriends(pf => ({ ...pf, [id]: !pf[id] }));
-
   const handlePostPhoto = (e) => { const f = e.target.files?.[0]; if (f) setAskPhoto(URL.createObjectURL(f)); };
-  const handleCommentPhoto = (id, e) => { const f = e.target.files?.[0]; if (f) setCommentPhotos(cp => ({ ...cp, [id]: URL.createObjectURL(f) })); };
 
   const HEALTH_WORDS = ["vet","sick","health","hurt","injury","wound","bleed","limp","pain","vomit","diarr","seiz","not eating"];
   const isHealthPost = (text) => HEALTH_WORDS.some(kw => (text || "").toLowerCase().includes(kw));
 
   const q = searchQ.toLowerCase();
-  const filteredPosts = (tab === "For You" ? posts : tab === "Events" ? posts.filter(p => p.tag === "Event") : tab === "Photos" ? posts.filter(p => p.photo) : tab === "Tips" ? posts.filter(p => p.tag === "Tip") : posts)
-    .filter(p => !q || p.who?.toLowerCase().includes(q) || p.text?.toLowerCase().includes(q) || p.tag?.toLowerCase().includes(q));
-
-  const filteredGroups = groups.filter(g => !q || g.name.toLowerCase().includes(q) || g.desc.toLowerCase().includes(q));
+  const filteredPosts   = (tab === "For You" ? posts : tab === "Events" ? posts.filter(p => p.tag === "Event") : tab === "Photos" ? posts.filter(p => p.photo) : posts)
+    .filter(p => !q || p.who?.toLowerCase().includes(q) || p.text?.toLowerCase().includes(q));
+  const filteredGroups  = groups.filter(g => !q || g.name.toLowerCase().includes(q) || g.desc.toLowerCase().includes(q));
   const filteredFriends = SUGGESTED_FRIENDS.filter(f => !q || f.who.toLowerCase().includes(q) || f.breed.toLowerCase().includes(q));
 
-  const photoPickerLabel = { flex: 1, display: "block", padding: "10px 0", borderRadius: 12, border: `1.5px solid #80A0FF`, background: "#EAF4FB", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#5A8EC8", textAlign: "center", cursor: "pointer" };
-
+  /* ── Post card ── */
   const PostCard = ({ p }) => {
-    const ts = TAG_STYLES[p.tag] || { bg: "#EAF4FB", text: "#5A8EC8" };
+    const ts     = TAG_STYLES[p.tag] || { bg: theme.mist, text: theme.ocean };
     const isOpen = commentOpenId === p.id;
     const inPack = !!packFriends[p.id];
     return (
-      <Card key={p.id} style={{ padding: 16, marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <CommunityAvatar post={p} userPhoto={petPhoto} size={38} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#34414E", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.who}</span>
-            {p.petName && <span style={{ fontFamily: "Nunito", fontSize: 12, color: "#7C8B98" }}>{p.petName}</span>}
+      <div style={{ background: "#fff", borderRadius: 22, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 16px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+        <div style={{ padding: "14px 14px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <CommunityAvatar post={p} userPhoto={petPhoto} size={40} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.who}</span>
+              {p.petName && <span style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate }}>{p.petName}</span>}
+            </div>
+            <span style={{ fontFamily: "Nunito", fontSize: 11, fontWeight: 700, color: ts.text, background: ts.bg, padding: "3px 10px", borderRadius: 999, flexShrink: 0 }}>{p.tag}</span>
           </div>
-          <span style={{ fontFamily: "Nunito", fontSize: 11, fontWeight: 700, color: ts.text, background: ts.bg, padding: "3px 10px", borderRadius: 999, flexShrink: 0 }}>{p.tag}</span>
+          {p.text && <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.ink, margin: "0 0 10px", lineHeight: 1.55 }}>{p.text}</p>}
         </div>
-        {p.text && <p style={{ fontFamily: "Nunito", fontSize: 14.5, color: "#34414E", margin: "0 0 10px", lineHeight: 1.5 }}>{p.text}</p>}
-        {p.photo && <div style={{ borderRadius: 14, overflow: "hidden", marginBottom: 12 }}><img src={p.photo} alt="post" style={{ width: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} /></div>}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => like(p.id)} style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, color: "#FFB5A7", fontFamily: "Nunito", fontWeight: 700, fontSize: 13 }}>
-            <Heart size={15} fill="#FFB5A7" color="#FFB5A7" /> {p.likes}
+        {p.photo && <img src={p.photo} alt="post" style={{ width: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} />}
+        <div style={{ padding: "10px 14px 12px", display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => like(p.id)} style={{ background: "#FFF0EE", border: "none", borderRadius: 999, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, color: "#D0604A", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, padding: "6px 12px" }}>
+            <Heart size={14} fill="#FFB5A7" color="#FFB5A7" /> {p.likes}
           </button>
-          <button onClick={() => setCommentOpenId(isOpen ? null : p.id)} style={{ background: "none", border: `1.5px solid ${isOpen ? "#5A8EC8" : "#80A0FF"}`, borderRadius: 999, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, color: isOpen ? "#5A8EC8" : "#7C8B98", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, padding: "5px 12px" }}>
+          <button onClick={() => setCommentOpenId(isOpen ? null : p.id)} style={{ background: isOpen ? theme.mist : "#F4F8FC", border: "none", borderRadius: 999, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, color: isOpen ? theme.ocean : theme.slate, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, padding: "6px 12px" }}>
             <MessageCircle size={14} /> {p.comments.length}
           </button>
-          <button onClick={() => togglePack(p.id)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, padding: "5px 12px", borderRadius: 999, cursor: "pointer", border: `1.5px solid ${inPack ? "#5A8EC8" : "#80A0FF"}`, background: inPack ? "#5A8EC8" : "#fff", color: inPack ? "#fff" : "#7C8B98" }}>
-            {inPack ? <><Check size={13} /> Pack friend</> : <><UserPlus size={13} /> Add to Pack</>}
+          <button onClick={() => togglePack(p.id)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, padding: "6px 14px", borderRadius: 999, cursor: "pointer", border: "none", background: inPack ? theme.ocean : theme.mist, color: inPack ? "#fff" : theme.ocean }}>
+            {inPack ? <><Check size={13} /> Pack</> : <><UserPlus size={13} /> Add</>}
           </button>
         </div>
         {isOpen && (
-          <div style={{ marginTop: 12, borderTop: `1px solid #E6EEF5`, paddingTop: 12 }}>
+          <div style={{ borderTop: `1px solid ${theme.line}`, padding: "12px 14px 14px" }}>
             {isHealthPost(p.text) && (
-              <div style={{ background: "#FFE08A", borderRadius: 12, padding: "8px 12px", marginBottom: 10, display: "flex", gap: 8 }}>
+              <div style={{ background: "#FFF8E1", borderRadius: 12, padding: "8px 12px", marginBottom: 10, display: "flex", gap: 8 }}>
                 <span>⚕️</span>
-                <p style={{ fontFamily: "Nunito", fontSize: 12, color: "#34414E", margin: 0, lineHeight: 1.5 }}>If this involves a health concern, please contact your vet. Community advice is not medical advice.</p>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.ink, margin: 0, lineHeight: 1.5 }}>If this involves a health concern, please contact your vet. Community advice is not medical advice.</p>
               </div>
             )}
             {p.comments.map((c, i) => (
-              <div key={i} style={{ background: "#EAF4FB", borderRadius: 12, padding: "8px 12px", marginBottom: 6 }}>
-                <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: "#5A8EC8" }}>{c.who}</span>
-                {c.text && <p style={{ fontFamily: "Nunito", fontSize: 13, color: "#34414E", margin: "2px 0 0" }}>{c.text}</p>}
-                {c.photo && <img src={c.photo} alt="reply" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 10, marginTop: 6 }} />}
+              <div key={i} style={{ background: theme.mist, borderRadius: 12, padding: "8px 12px", marginBottom: 6 }}>
+                <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: theme.ocean }}>{c.who}</span>
+                {c.text && <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.ink, margin: "2px 0 0" }}>{c.text}</p>}
               </div>
             ))}
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <input value={commentInputs[p.id] || ""} onChange={e => setCommentInputs(ci => ({ ...ci, [p.id]: e.target.value }))} onKeyDown={e => e.key === "Enter" && addComment(p.id)} placeholder="Write a comment…" style={{ flex: 1, padding: "10px 14px", borderRadius: 999, border: `2px solid #80A0FF`, fontFamily: "Nunito", fontSize: 13, outline: "none", color: "#34414E" }} />
-              <button onClick={() => addComment(p.id)} style={{ background: "#5A8EC8", border: "none", borderRadius: "50%", width: 38, height: 38, display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 }}>
-                <Send size={15} color="#fff" />
+              <input value={commentInputs[p.id] || ""} onChange={e => setCommentInputs(ci => ({ ...ci, [p.id]: e.target.value }))} onKeyDown={e => e.key === "Enter" && addComment(p.id)} placeholder="Write a comment…" style={{ flex: 1, padding: "9px 14px", borderRadius: 999, border: `1.5px solid ${theme.line}`, fontFamily: "Nunito", fontSize: 13, outline: "none", color: theme.ink, background: "#fff" }} />
+              <button onClick={() => addComment(p.id)} style={{ background: theme.ocean, border: "none", borderRadius: "50%", width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 }}>
+                <Send size={14} color="#fff" />
               </button>
             </div>
           </div>
         )}
-      </Card>
+      </div>
     );
   };
 
   return (
-    <div style={{ paddingBottom: 30 }}>
-      {/* Header */}
-      <div style={{ padding: "16px 22px 0" }}>
-        <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 20, color: "#34414E", margin: "0 0 12px" }}>The Comi Pack 🐾</p>
+    <div style={{ background: theme.mist, minHeight: "100%", paddingBottom: 32 }}>
 
-        {/* Search bar */}
-        <div style={{ position: "relative", marginBottom: 14 }}>
-          <Search size={16} color="#7C8B98" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-          <input
-            value={searchQ}
-            onChange={e => setSearchQ(e.target.value)}
-            onFocus={() => setSearchFocus(true)}
-            onBlur={() => setSearchFocus(false)}
-            placeholder="Search friends, groups, posts, events…"
-            style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 999, border: `2px solid ${searchFocus ? "#5A8EC8" : "#80A0FF"}`, fontFamily: "Nunito", fontSize: 14, color: "#34414E", outline: "none", background: "#fff", boxSizing: "border-box" }}
-          />
-          {searchQ && <button onClick={() => setSearchQ("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", display: "grid", placeItems: "center" }}><X size={16} color="#7C8B98" /></button>}
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 16, overflowX: "auto", borderBottom: `2px solid #E6EEF5` }}>
-          {TABS.map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{ padding: "8px 14px", border: "none", background: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: tab === t ? "#5A8EC8" : "#7C8B98", cursor: "pointer", whiteSpace: "nowrap", borderBottom: `2px solid ${tab === t ? "#5A8EC8" : "transparent"}`, marginBottom: -2 }}
-            >
-              {t}
-            </button>
-          ))}
+      {/* ── Hero banner ── */}
+      <div style={{ background: "linear-gradient(135deg, #4A82C0 0%, #6AAED8 55%, #93C5E0 100%)", padding: "18px 20px 20px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -28, right: -28, width: 110, height: 110, borderRadius: "50%", background: "rgba(255,255,255,0.10)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -18, left: -18, width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,0.07)", pointerEvents: "none" }} />
+        <p style={{ fontFamily: "Nunito", fontSize: 11, color: "rgba(255,255,255,0.72)", margin: "0 0 2px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" }}>Welcome to</p>
+        <h1 style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 22, color: "#fff", margin: "0 0 4px", lineHeight: 1.2 }}>The Comi Pack</h1>
+        <p style={{ fontFamily: "Nunito", fontSize: 12.5, color: "rgba(255,255,255,0.80)", margin: "0 0 14px", lineHeight: 1.4 }}>Connect with pet owners, share moments, and grow together.</p>
+        <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+          <button onClick={() => setAskOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 999, background: "#fff", border: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.ocean, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
+            <Plus size={14} /> Share moment
+          </button>
+          <div style={{ display: "flex", alignItems: "center", padding: "8px 14px", borderRadius: 999, background: "rgba(255,255,255,0.18)" }}>
+            <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff" }}>{posts.length + 12}k members</span>
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: "0 22px" }}>
+      {/* ── Search ── */}
+      <div style={{ padding: "12px 16px 0" }}>
+        <div style={{ position: "relative" }}>
+          <Search size={15} color={theme.slate} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+          <input
+            value={searchQ} onChange={e => setSearchQ(e.target.value)}
+            onFocus={() => setSearchFocus(true)} onBlur={() => setSearchFocus(false)}
+            placeholder="Search friends, groups, posts…"
+            style={{ width: "100%", padding: "11px 36px 11px 38px", borderRadius: 999, border: `1.5px solid ${searchFocus ? theme.ocean : "rgba(90,142,200,0.18)"}`, fontFamily: "Nunito", fontSize: 13, color: theme.ink, outline: "none", background: "#fff", boxSizing: "border-box", boxShadow: "0 2px 8px rgba(90,142,200,0.07)" }}
+          />
+          {searchQ && <button onClick={() => setSearchQ("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer" }}><X size={15} color={theme.slate} /></button>}
+        </div>
+      </div>
 
-        {/* Ask the Pack button — For You and Photos tabs */}
-        {(tab === "For You" || tab === "Photos") && (
-          <button
-            onClick={() => setAskOpen(true)}
-            style={{ width: "100%", padding: "12px 18px", borderRadius: 999, border: "2px solid #80A0FF", background: "#EAF4FB", fontFamily: "Nunito", fontWeight: 700, fontSize: 14, color: "#5A8EC8", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, marginBottom: 16 }}
-          >
-            <Plus size={17} /> Share with the Pack
-          </button>
-        )}
+      {/* ── Tabs ── */}
+      <div style={{ padding: "10px 16px 0", display: "flex", gap: 7, overflowX: "auto" }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ flexShrink: 0, padding: "8px 20px", borderRadius: 999, border: "none", background: tab === t ? theme.ocean : "#fff", color: tab === t ? "#fff" : theme.slate, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, cursor: "pointer", boxShadow: tab === t ? "0 3px 10px rgba(90,142,200,0.26)" : "0 1px 4px rgba(0,0,0,0.05)", transition: "all 0.12s" }}>{t}</button>
+        ))}
+      </div>
 
-        {/* FRIENDS TAB */}
-        {tab === "Friends" && (
-          <div>
-            <SectionTitle>Suggested friends</SectionTitle>
-            {filteredFriends.map(f => (
-              <Card key={f.id} style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#EAF4FB", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 22 }}>{f.emoji}</div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#34414E", margin: 0 }}>{f.who}</p>
-                  <p style={{ fontFamily: "Nunito", fontSize: 12, color: "#7C8B98", margin: 0 }}>{f.breed}</p>
-                </div>
-                <button
-                  onClick={() => togglePack(f.id)}
-                  style={{ padding: "7px 14px", borderRadius: 999, border: `1.5px solid ${packFriends[f.id] ? "#5A8EC8" : "#80A0FF"}`, background: packFriends[f.id] ? "#5A8EC8" : "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: packFriends[f.id] ? "#fff" : "#7C8B98", cursor: "pointer" }}
-                >
-                  {packFriends[f.id] ? "In Pack ✓" : "Add to Pack"}
-                </button>
-              </Card>
-            ))}
-            {filteredFriends.length === 0 && (
-              <Card style={{ textAlign: "center" }}><p style={{ fontFamily: "Nunito", fontSize: 14, color: "#7C8B98", margin: 0 }}>No results for "{searchQ}"</p></Card>
-            )}
-          </div>
-        )}
+      <div style={{ padding: "14px 14px 0" }}>
 
-        {/* GROUPS TAB */}
-        {tab === "Groups" && (
-          <div>
-            <SectionTitle>Discover groups</SectionTitle>
-            {filteredGroups.map(g => (
-              <Card key={g.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 14, background: "#EAF4FB", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 22 }}>{g.emoji}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#34414E", margin: "0 0 3px" }}>{g.name}</p>
-                    <p style={{ fontFamily: "Nunito", fontSize: 12, color: "#7C8B98", margin: "0 0 8px", lineHeight: 1.4 }}>{g.desc}</p>
-                    <p style={{ fontFamily: "Nunito", fontSize: 11, color: "#7C8B98", margin: 0 }}>{g.members.toLocaleString()} members</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => toggleGroup(g.id)}
-                  style={{ width: "100%", marginTop: 12, padding: "10px", borderRadius: 999, border: `2px solid ${g.joined ? "#5A8EC8" : "#80A0FF"}`, background: g.joined ? "#5A8EC8" : "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: g.joined ? "#fff" : "#5A8EC8", cursor: "pointer" }}
-                >
-                  {g.joined ? "✓ Joined" : "Join group"}
-                </button>
-              </Card>
-            ))}
-            {filteredGroups.length === 0 && (
-              <Card style={{ textAlign: "center" }}><p style={{ fontFamily: "Nunito", fontSize: 14, color: "#7C8B98", margin: 0 }}>No groups match "{searchQ}"</p></Card>
-            )}
-          </div>
-        )}
-
-        {/* POST FEED (For You, Events, Photos, Tips) */}
-        {tab !== "Friends" && tab !== "Groups" && (
+        {/* ── FOR YOU ── */}
+        {tab === "For You" && !searchQ && (
           <>
-            {filteredPosts.length === 0 ? (
-              <Card style={{ textAlign: "center", marginBottom: 12 }}><p style={{ fontFamily: "Nunito", fontSize: 14, color: "#7C8B98", margin: 0 }}>{searchQ ? `No results for "${searchQ}"` : "Nothing here yet — be the first to post!"}</p></Card>
-            ) : (
-              filteredPosts.map(p => <PostCard key={p.id} p={p} />)
-            )}
+            {/* Suggested Friends */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 2px" }}>
+                <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink }}>Suggested Friends</span>
+                <button onClick={() => setTab("Friends")} style={{ background: "none", border: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer" }}>See all</button>
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+                {SUGGESTED_FRIENDS.map(f => (
+                  <div key={f.id} style={{ flexShrink: 0, width: 108, background: "#fff", borderRadius: 18, padding: "14px 10px 12px", textAlign: "center", boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+                    <div style={{ width: 50, height: 50, borderRadius: "50%", overflow: "hidden", margin: "0 auto 8px", border: `2px solid ${theme.mist}` }}>
+                      <img src={f.photo} alt={f.who} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                    <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: theme.ink, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.who.split(" & ")[1] || f.who}</p>
+                    <p style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate, margin: "0 0 8px" }}>{f.breed}</p>
+                    <button onClick={() => togglePack(f.id)} style={{ width: "100%", padding: "5px 0", borderRadius: 999, border: "none", background: packFriends[f.id] ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: packFriends[f.id] ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                      {packFriends[f.id] ? "✓ Pack" : "+ Add"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Popular Groups */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 2px" }}>
+                <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink }}>Popular Groups</span>
+                <button onClick={() => setTab("Groups")} style={{ background: "none", border: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer" }}>See all</button>
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+                {groups.slice(0, 5).map(g => (
+                  <div key={g.id} style={{ flexShrink: 0, width: 148, background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+                    <div style={{ width: "100%", height: 80, overflow: "hidden", background: "#EAF4FB" }}>
+                      <img src={g.photo} alt={g.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                    <div style={{ padding: "9px 10px 11px" }}>
+                      <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: theme.ink, margin: "0 0 2px", lineHeight: 1.3 }}>{g.name}</p>
+                      <p style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate, margin: "0 0 7px" }}>{g.members.toLocaleString()} members</p>
+                      <button onClick={() => toggleGroup(g.id)} style={{ width: "100%", padding: "5px 0", borderRadius: 999, border: "none", background: g.joined ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: g.joined ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                        {g.joined ? "✓ Joined" : "Join"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Upcoming Events */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 2px" }}>
+                <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink }}>Upcoming Events</span>
+                <button onClick={() => setTab("Events")} style={{ background: "none", border: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer" }}>See all</button>
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+                {DOG_EVENTS.map(ev => (
+                  <div key={ev.id} style={{ flexShrink: 0, width: 195, background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+                    <div style={{ width: "100%", height: 88, overflow: "hidden" }}>
+                      <img src={ev.photo} alt={ev.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                    <div style={{ padding: "9px 12px 11px" }}>
+                      <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, margin: "0 0 3px" }}>{ev.title}</p>
+                      <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.slate, margin: 0 }}>{ev.date} · {ev.location}</p>
+                      <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ocean, margin: "2px 0 0", fontWeight: 700 }}>{ev.attendees} going</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* QR Dog Tag card */}
+            <div style={{
+              background: "linear-gradient(135deg, #EAF4FB 0%, #D6C7F0 100%)",
+              borderRadius: 22, padding: "16px 16px 14px",
+              marginBottom: 20,
+              boxShadow: "0 2px 14px rgba(90,142,200,0.10)",
+              border: "1.5px solid rgba(130,100,220,0.14)",
+              display: "flex", alignItems: "center", gap: 14,
+            }}>
+              {/* QR mockup box */}
+              <div style={{ flexShrink: 0, width: 62, height: 62, borderRadius: 14, background: "#fff", boxShadow: "0 2px 8px rgba(90,142,200,0.14)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+                <QrCode size={36} color="#5A8EC8" strokeWidth={1.5} />
+              </div>
+
+              {/* Text + buttons */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: "0 0 3px" }}>Comi QR Dog Tag</p>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 10px", lineHeight: 1.4 }}>
+                  Let other owners scan {pet.name}'s tag to view his profile and add him to their Pack.
+                </p>
+                <div style={{ display: "flex", gap: 7 }}>
+                  <button style={{ padding: "7px 14px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer", boxShadow: "0 2px 8px rgba(90,142,200,0.22)" }}>
+                    View QR
+                  </button>
+                  <button style={{ padding: "7px 14px", borderRadius: 999, border: `1.5px solid rgba(130,100,220,0.30)`, background: "rgba(255,255,255,0.70)", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#6E4FC8", cursor: "pointer" }}>
+                    Order Tag
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* From the Pack header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 2px" }}>
+              <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink }}>From the Pack</span>
+              <button onClick={() => setAskOpen(true)} style={{ display: "flex", alignItems: "center", gap: 4, background: theme.mist, border: "none", borderRadius: 999, padding: "6px 13px", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer" }}>
+                <Plus size={13} /> Post
+              </button>
+            </div>
           </>
         )}
 
-        {/* QR Dog Tag */}
-        {tab === "For You" && !searchQ && (
-          <div style={{ background: "linear-gradient(135deg,#D6C7F0 0%,#EAF4FB 100%)", borderRadius: 24, padding: 18, marginTop: 8, marginBottom: 12 }}>
-            <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
-              <div style={{ background: "#fff", borderRadius: 14, padding: 10, flexShrink: 0 }}><QrCode size={22} color="#5A8EC8" /></div>
-              <div>
-                <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: "#34414E", margin: "0 0 4px" }}>Comi QR Dog Tag ✨</p>
-                <p style={{ fontFamily: "Nunito", fontSize: 13, color: "#7C8B98", margin: 0, lineHeight: 1.5 }}>Premium members get a QR tag so other pet owners can scan and add your pet to their Pack.</p>
-              </div>
-            </div>
-            <Button onClick={() => setQrOpen(true)} variant="soft" style={{ fontSize: 13, padding: "10px 16px" }}>Preview public pet profile</Button>
-          </div>
+        {/* Search results hint */}
+        {searchQ && tab === "For You" && (
+          <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, margin: "0 2px 12px" }}>Results for "{searchQ}"</p>
         )}
 
-        <p style={{ textAlign: "center", fontFamily: "Nunito", fontSize: 12, color: "#7C8B98", marginTop: 8, lineHeight: 1.6 }}>
-          Community advice is not medical advice. Contact a vet for health concerns. 💙<br />Be kind — we're all learning 🐾
-        </p>
-      </div>
-
-      {/* Post composer modal */}
-      {askOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setAskOpen(false)}>
-          <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "22px 22px 36px", width: "100%", maxWidth: 390 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 17, color: "#34414E", margin: 0 }}>Share with the Pack 🐾</p>
-              <button onClick={() => { setAskOpen(false); setAskPhoto(null); }} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} color="#7C8B98" /></button>
-            </div>
-            {/* Post type chips */}
-            <div style={{ display: "flex", gap: 7, marginBottom: 12, flexWrap: "wrap" }}>
-              {["Moment","Question","Tip","Event","Photo"].map(t => (
-                <button key={t} onClick={() => setAskTag(t)} style={{ padding: "6px 12px", borderRadius: 999, border: `2px solid ${askTag === t ? "#5A8EC8" : "#80A0FF"}`, background: askTag === t ? "#EAF4FB" : "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: askTag === t ? "#5A8EC8" : "#7C8B98", cursor: "pointer" }}>
-                  {t}
-                </button>
+        {/* ── FRIENDS TAB ── */}
+        {tab === "Friends" && (
+          <>
+            <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 2px 12px" }}>Suggested for you</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {filteredFriends.map(f => (
+                <div key={f.id} style={{ background: "#fff", borderRadius: 20, overflow: "hidden", boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+                  <div style={{ width: "100%", height: 80, overflow: "hidden", background: theme.mist }}>
+                    <img src={f.photo} alt={f.who} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                  <div style={{ padding: "10px 12px 12px" }}>
+                    <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, margin: "0 0 2px" }}>{f.who}</p>
+                    <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.slate, margin: "0 0 8px" }}>{f.breed}</p>
+                    <button onClick={() => togglePack(f.id)} style={{ width: "100%", padding: "7px 0", borderRadius: 999, border: "none", background: packFriends[f.id] ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: packFriends[f.id] ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                      {packFriends[f.id] ? "✓ In Pack" : "+ Add to Pack"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-            <textarea value={askText} onChange={e => setAskText(e.target.value)} placeholder="What would you like to share?" style={{ width: "100%", padding: "12px 14px", borderRadius: 16, border: `2px solid #80A0FF`, fontFamily: "Nunito", fontSize: 14, color: "#34414E", outline: "none", resize: "none", height: 80, boxSizing: "border-box", marginBottom: 10 }} />
-            {askPhoto ? (
-              <div style={{ position: "relative", marginBottom: 10 }}>
-                <img src={askPhoto} alt="preview" style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 14, display: "block" }} />
-                <button onClick={() => setAskPhoto(null)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 26, height: 26, display: "grid", placeItems: "center", cursor: "pointer" }}><X size={13} color="#fff" /></button>
+            {filteredFriends.length === 0 && <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, textAlign: "center", marginTop: 24 }}>No results for "{searchQ}"</p>}
+          </>
+        )}
+
+        {/* ── GROUPS TAB ── */}
+        {tab === "Groups" && (
+          <>
+            <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 2px 12px" }}>Discover groups</p>
+            {filteredGroups.map(g => (
+              <div key={g.id} style={{ background: "#fff", borderRadius: 20, overflow: "hidden", marginBottom: 12, boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+                <div style={{ width: "100%", height: 96, overflow: "hidden" }}>
+                  <img src={g.photo} alt={g.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <div style={{ padding: "12px 14px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: "0 0 3px" }}>{g.name}</p>
+                    <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 4px", lineHeight: 1.4 }}>{g.desc}</p>
+                    <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ocean, margin: 0, fontWeight: 700 }}>{g.members.toLocaleString()} members</p>
+                  </div>
+                  <button onClick={() => toggleGroup(g.id)} style={{ flexShrink: 0, padding: "8px 16px", borderRadius: 999, border: "none", background: g.joined ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: g.joined ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                    {g.joined ? "✓ Joined" : "Join"}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                <label style={photoPickerLabel}>📷 Take photo<input type="file" accept="image/*" capture="environment" onChange={handlePostPhoto} style={{ display: "none" }} /></label>
-                <label style={photoPickerLabel}>🖼️ Choose photo<input type="file" accept="image/*" onChange={handlePostPhoto} style={{ display: "none" }} /></label>
+            ))}
+            {filteredGroups.length === 0 && <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, textAlign: "center", marginTop: 24 }}>No groups match "{searchQ}"</p>}
+          </>
+        )}
+
+        {/* ── EVENTS TAB ── */}
+        {tab === "Events" && (
+          <>
+            <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 2px 12px" }}>Upcoming events</p>
+            {DOG_EVENTS.map(ev => (
+              <div key={ev.id} style={{ background: "#fff", borderRadius: 20, overflow: "hidden", marginBottom: 12, boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+                <div style={{ width: "100%", height: 120, overflow: "hidden" }}>
+                  <img src={ev.photo} alt={ev.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <div style={{ padding: "12px 14px 14px" }}>
+                  <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 4px" }}>{ev.title}</p>
+                  <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 2px" }}>{ev.date}</p>
+                  <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 10px" }}>{ev.location}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean }}>{ev.attendees} going</span>
+                    <button style={{ padding: "8px 18px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>RSVP</button>
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
+          </>
+        )}
+
+        {/* ── PLACES tab ── */}
+        {tab === "Places" && <CommunityPlaces pet={pet} />}
+
+        {/* ── POST FEED (For You + Photos tabs) ── */}
+        {(tab === "For You" || tab === "Photos") && (
+          filteredPosts.length === 0
+            ? <div style={{ textAlign: "center", padding: "28px 0" }}><p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: 0 }}>{searchQ ? `No results for "${searchQ}"` : "Nothing here yet — be the first to post!"}</p></div>
+            : filteredPosts.map(p => <PostCard key={p.id} p={p} />)
+        )}
+
+        <p style={{ textAlign: "center", fontFamily: "Nunito", fontSize: 11, color: theme.slate, marginTop: 4, lineHeight: 1.6 }}>Community advice is not medical advice.</p>
+      </div>
+
+      {/* ── Post composer sheet ── */}
+      {askOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setAskOpen(false)}>
+          <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "22px 20px 36px", width: "100%", maxWidth: 390 }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: theme.line, margin: "0 auto 16px" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 17, color: theme.ink, margin: 0 }}>Share with the Pack</p>
+              <button onClick={() => { setAskOpen(false); setAskPhoto(null); }} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} color={theme.slate} /></button>
+            </div>
+            <div style={{ display: "flex", gap: 7, marginBottom: 12, flexWrap: "wrap" }}>
+              {["Moment","Question","Tip","Event","Photo"].map(t => (
+                <button key={t} onClick={() => setAskTag(t)} style={{ padding: "6px 13px", borderRadius: 999, border: "none", background: askTag === t ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: askTag === t ? "#fff" : theme.ocean, cursor: "pointer" }}>{t}</button>
+              ))}
+            </div>
+            <textarea value={askText} onChange={e => setAskText(e.target.value)} placeholder="What would you like to share?" style={{ width: "100%", padding: "12px 14px", borderRadius: 16, border: `1.5px solid ${theme.line}`, fontFamily: "Nunito", fontSize: 14, color: theme.ink, outline: "none", resize: "none", height: 80, boxSizing: "border-box", marginBottom: 10 }} />
+            {askPhoto
+              ? <div style={{ position: "relative", marginBottom: 10 }}>
+                  <img src={askPhoto} alt="preview" style={{ width: "100%", maxHeight: 150, objectFit: "cover", borderRadius: 14, display: "block" }} />
+                  <button onClick={() => setAskPhoto(null)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.40)", border: "none", borderRadius: "50%", width: 26, height: 26, display: "grid", placeItems: "center", cursor: "pointer" }}><X size={13} color="#fff" /></button>
+                </div>
+              : <label style={{ display: "block", padding: "10px", borderRadius: 999, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.ocean, textAlign: "center", cursor: "pointer", marginBottom: 10 }}>
+                  📷 Add photo<input type="file" accept="image/*" onChange={handlePostPhoto} style={{ display: "none" }} />
+                </label>
+            }
             <Button onClick={submitPost} disabled={!askText.trim() && !askPhoto}>Post to the Pack</Button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// 11a. Places tab embedded inside Community
+function CommunityPlaces({ pet }) {
+  const [filter, setFilter] = useState("All");
+  const [query,  setQuery]  = useState("");
+  const [locStatus, setLocStatus] = useState("prompt");
+  const [currentLoc, setCurrentLoc] = useState("Burnaby, BC");
+  const [coords, setCoords] = useState(null);
+  const FILTERS = ["All", "Park", "Walk", "Café", "Vet", "Groomer"];
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) { setCurrentLoc("Burnaby, BC"); setLocStatus("granted"); return; }
+    setLocStatus("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setCurrentLoc("Near you"); setLocStatus("granted"); },
+      (err) => { setCurrentLoc("Burnaby, BC"); setLocStatus(err.code === 1 ? "denied" : "granted"); },
+      { timeout: 8000, enableHighAccuracy: false }
+    );
+  };
+
+  const filtered = PLACES.filter(p => {
+    const matchType  = filter === "All" || p.type === filter;
+    const q = query.toLowerCase().trim();
+    const matchQuery = !q || [p.name, p.type, ...p.locations].some(s => s.toLowerCase().includes(q));
+    return matchType && matchQuery;
+  });
+
+  const mapsUrl = (place) => coords
+    ? `https://www.google.com/maps/dir/?api=1&origin=${coords.lat},${coords.lng}&destination=${encodeURIComponent(place.mapsQuery)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.mapsQuery)}`;
+
+  return (
+    <div>
+      {/* Location prompt */}
+      {locStatus === "prompt" && (
+        <div style={{ background: theme.mist, borderRadius: 16, padding: "14px 16px", marginBottom: 12, border: `1.5px solid ${theme.sky}` }}>
+          <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: "0 0 4px" }}>
+            Allow location for better results?
+          </p>
+          <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 10px", lineHeight: 1.5 }}>
+            Shows places near you and enables directions.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={requestLocation} style={{ flex: 1, padding: "9px 0", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>Use my location</button>
+            <button onClick={() => setLocStatus("dismissed")} style={{ flex: 1, padding: "9px 0", borderRadius: 999, border: `1.5px solid ${theme.line}`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.slate, cursor: "pointer" }}>Not now</button>
+          </div>
+        </div>
+      )}
+      {locStatus === "locating" && (
+        <div style={{ background: theme.mist, borderRadius: 14, padding: "10px 14px", marginBottom: 12 }}>
+          <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, margin: 0 }}>Finding your location…</p>
+        </div>
+      )}
+      {locStatus === "granted" && (
+        <div style={{ background: theme.mint, borderRadius: 14, padding: "8px 14px", marginBottom: 12 }}>
+          <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#2E7D5E", margin: 0 }}>
+            {coords ? "Using your current location" : `Showing places near ${currentLoc}`}
+          </p>
+        </div>
+      )}
+
+      {/* Search */}
+      <div style={{ position: "relative", marginBottom: 12 }}>
+        <Search size={15} color={theme.slate} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }} />
+        <input
+          value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Search parks, cafés, vets…"
+          style={{ width: "100%", padding: "11px 14px 11px 36px", borderRadius: 999, border: `1.5px solid ${theme.line}`, fontFamily: "Nunito", fontSize: 13, color: theme.ink, outline: "none", background: "#fff", boxSizing: "border-box" }}
+        />
+      </div>
+
+      {/* Filter chips */}
+      <div style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 4, marginBottom: 14, scrollbarWidth: "none" }}>
+        {FILTERS.map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 999, border: "none", background: filter === f ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: filter === f ? "#fff" : theme.ocean, cursor: "pointer" }}>{f}</button>
+        ))}
+      </div>
+
+      {/* Place cards */}
+      {filtered.length === 0
+        ? <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, textAlign: "center", margin: "20px 0" }}>No places found.</p>
+        : filtered.map(place => (
+          <div key={place.id} style={{ background: "#fff", borderRadius: 20, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ background: theme.mist, borderRadius: 14, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+                {place.emoji}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
+                  <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: 0 }}>{place.name}</p>
+                  <span style={{ fontFamily: "Nunito", fontSize: 11, color: theme.slate, flexShrink: 0, marginLeft: 6 }}>{place.dist}</span>
+                </div>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 6px" }}>{place.type} · 🚶 {place.walkTime}</p>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.ink, margin: "0 0 8px", lineHeight: 1.4 }}>{place.petNote}</p>
+                <a href={mapsUrl(place)} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "inline-block", padding: "6px 14px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", textDecoration: "none", cursor: "pointer" }}>
+                  Directions
+                </a>
+              </div>
+            </div>
+          </div>
+        ))
+      }
     </div>
   );
 }
@@ -3898,7 +4649,7 @@ function ExploreScreen({ pet }) {
   );
 
   const mapLabel = locStatus === "granted"
-    ? (coords ? "📍 Your location" : `📍 ${currentLoc}`)
+    ? (coords ? "Your location" : currentLoc)
     : "Near Burnaby";
 
   return (
@@ -3909,7 +4660,6 @@ function ExploreScreen({ pet }) {
       {locStatus === "prompt" && (
         <div style={{ background: theme.mist, borderRadius: theme.radius, padding: 16, marginBottom: 14, border: `2px solid ${theme.sky}`, boxShadow: theme.shadow }}>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
-            <span style={{ fontSize: 22, flexShrink: 0 }}>📍</span>
             <div>
               <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 3px" }}>
                 Allow Comi to use your location?
@@ -3932,8 +4682,7 @@ function ExploreScreen({ pet }) {
 
       {/* ── Finding location… ── */}
       {locStatus === "locating" && (
-        <div style={{ background: theme.mist, borderRadius: 14, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 18 }}>📡</span>
+        <div style={{ background: theme.mist, borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
           <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: 0 }}>Finding your location…</p>
         </div>
       )}
@@ -3942,7 +4691,7 @@ function ExploreScreen({ pet }) {
       {locStatus === "denied" && (
         <div style={{ background: "#FFF4F3", borderRadius: 14, padding: "12px 16px", marginBottom: 14, border: `2px solid ${theme.coral}` }}>
           <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.ink, margin: "0 0 8px", lineHeight: 1.5 }}>
-            📍 <b>Location permission was not allowed.</b> You can search manually instead.
+            <b>Location permission was not allowed.</b> You can search manually instead.
           </p>
           <button
             onClick={() => setLocStatus("dismissed")}
@@ -3954,8 +4703,7 @@ function ExploreScreen({ pet }) {
 
       {/* ── Location granted confirmation ── */}
       {locStatus === "granted" && coords && (
-        <div style={{ background: theme.mint, borderRadius: 14, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 16 }}>✅</span>
+        <div style={{ background: theme.mint, borderRadius: 14, padding: "10px 14px", marginBottom: 14 }}>
           <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: "#2E7D5E", margin: 0 }}>
             Using your current location · Sample places shown near Burnaby
           </p>
@@ -4138,7 +4886,7 @@ function ExploreScreen({ pet }) {
                       {travelPill("🚗", "Drive", p.driveTime)}
                     </div>
                     <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.ink, margin: "0 0 14px", lineHeight: 1.55 }}>
-                      🐾 {p.petNote}
+                      {p.petNote}
                     </p>
                     <a
                       href={mapsUrl(p)} target="_blank" rel="noopener noreferrer"
@@ -4161,153 +4909,153 @@ function ExploreScreen({ pet }) {
 
       {/* Privacy note */}
       <p style={{ textAlign: "center", fontFamily: "Nunito", fontSize: 11.5, color: theme.slate, marginTop: 20, lineHeight: 1.5 }}>
-        📍 Location is used only to show nearby places. Your coordinates are never stored or shared.
+        Location is used only to show nearby places. Your coordinates are never stored or shared.
       </p>
     </div>
   );
 }
 
 // 12. Profile / Settings — shows pet photo, age, weight, and edit button
-function ProfileScreen({ go, pet, petPhoto, goToEditSetup, onAddPet }) {
+function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet, savedMsg, onClearSaved }) {
   const [notif,  setNotif]  = useState(true);
   const [weekly, setWeekly] = useState(true);
-  const ageDisplay = calcAge(pet.birthday);
-  return (
-    <div style={{ padding: 22 }}>
-      <TopBar title="Profile" />
-      <Card style={{ textAlign: "center", marginBottom: 18 }}>
-        <PetAvatar pet={pet} petPhoto={petPhoto} size={84} style={{ margin: "0 auto 10px" }} />
-        <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 20, color: theme.ink, margin: 0 }}>{pet.name}</p>
-        {pet.breed  && <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "3px 0 0" }}>{pet.breed}</p>}
-        {ageDisplay && <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "2px 0 0" }}>Age: {ageDisplay}</p>}
-        {pet.weight && (
-          <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "2px 0 6px" }}>
-            Weight: {pet.weight} {pet.weightUnit || "lb"}
-          </p>
-        )}
-        {pet.personality.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 8 }}>
-            {pet.personality.map((t) => (
-              <span key={t} style={{ background: theme.mist, color: theme.slate, fontFamily: "Nunito", fontWeight: 600, fontSize: 12, padding: "3px 10px", borderRadius: 999, border: `1px solid #80A0FF` }}>
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
+  const [showToast, setShowToast] = useState(false);
+  const [toastText, setToastText] = useState("");
 
-        {/* Comi mascot display */}
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${theme.line}` }}>
-          <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.slate, margin: "0 0 8px" }}>Comi mascot</p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-            <img src={getMascotImage(pet)} alt="mascot" style={{ width: 56, height: 56, objectFit: "contain" }} />
-            <div style={{ textAlign: "left" }}>
-              {pet.mascot?.breed ? (
-                <>
-                  <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, margin: 0 }}>{pet.mascot.breed}</p>
-                  <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "2px 0 0" }}>
-                    {[pet.mascot.color, pet.mascot.markings, pet.mascot.pose].filter(Boolean).join(" · ")}
-                  </p>
-                </>
-              ) : (
-                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0 }}>Default Comi mascot</p>
-              )}
+  useEffect(() => {
+    if (savedMsg) {
+      setToastText(savedMsg);
+      setShowToast(true);
+      const t = setTimeout(() => { setShowToast(false); onClearSaved?.(); }, 2800);
+      return () => clearTimeout(t);
+    }
+  }, [savedMsg]);
+
+  const allPets = pets?.length ? pets : [pet];
+
+  return (
+    <div style={{ padding: "22px 22px 36px" }}>
+      <TopBar title="Profile" />
+
+      {/* ── Toast confirmation ─────────────────────────────────────────── */}
+      {showToast && (
+        <div style={{
+          background: "#2E7D5E", color: "#fff", fontFamily: "Nunito", fontWeight: 700,
+          fontSize: 13, padding: "11px 18px", borderRadius: 16,
+          boxShadow: "0 4px 16px rgba(46,125,94,0.22)", marginBottom: 14,
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <Check size={15} color="#fff" /> {toastText}
+        </div>
+      )}
+
+      {/* ── Pet Profiles ──────────────────────────────────────────────── */}
+      <SectionTitle>Pet Profiles</SectionTitle>
+      <div style={{ marginBottom: 4 }}>
+        {allPets.map(p => {
+          const isActive = p.id === pet.id;
+          const age = calcAge(p.birthday);
+          return (
+            <div key={p.id} style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "12px 14px", background: "#fff", borderRadius: 20,
+              border: `1.5px solid ${isActive ? "rgba(90,142,200,0.35)" : "rgba(128,160,255,0.18)"}`,
+              boxShadow: isActive ? "0 3px 14px rgba(90,142,200,0.14)" : "0 2px 8px rgba(90,142,200,0.07)",
+              marginBottom: 10,
+            }}>
+              <PetAvatar pet={p} petPhoto={(petPhotos || {})[p.id] || null} size={52} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+                  <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink }}>{p.name}</span>
+                  {isActive && (
+                    <span style={{ background: theme.ocean, color: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 9, padding: "2px 8px", borderRadius: 999 }}>Active</span>
+                  )}
+                </div>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {[p.breed, age].filter(Boolean).join(" · ")}
+                </p>
+              </div>
               <button
-                onClick={goToEditSetup || (() => go("setup"))}
-                style={{ background: "none", border: "none", padding: 0, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer", marginTop: 4 }}
+                onClick={() => onEditPet?.(p.id)}
+                style={{
+                  background: theme.mist, border: "1.5px solid rgba(128,160,255,0.25)",
+                  borderRadius: 12, padding: "7px 15px",
+                  fontFamily: "Nunito", fontWeight: 700, fontSize: 12,
+                  color: theme.ocean, cursor: "pointer", flexShrink: 0,
+                  display: "flex", alignItems: "center", gap: 5,
+                }}
               >
-                Customize mascot →
+                <Pencil size={12} /> Edit
               </button>
             </div>
-          </div>
-        </div>
+          );
+        })}
+        <button
+          onClick={onAddPet}
+          style={{ width: "100%", padding: "13px 18px", borderRadius: 999, border: "2px dashed #80A0FF", background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 14, color: "#5A8EC8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20 }}
+        >
+          <Plus size={17} /> Add another pet
+        </button>
+      </div>
 
-        <div style={{ marginTop: 14 }}>
-          <Button variant="soft" onClick={goToEditSetup || (() => go("setup"))} style={{ fontSize: 14, padding: "10px 18px" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <Pencil size={15} /> Edit pet profile
-            </span>
-          </Button>
-        </div>
-      </Card>
-
+      {/* ── Wellness preferences ───────────────────────────────────────── */}
       <SectionTitle>Wellness preferences</SectionTitle>
       <Card style={{ marginBottom: 18 }}>
-        <Row icon={Bell}     label="Reminder notifications">   <Toggle on={notif}  onClick={() => setNotif(!notif)} /></Row>
+        <Row icon={Bell}     label="Reminder notifications"><Toggle on={notif}  onClick={() => setNotif(!notif)} /></Row>
         <Divider />
-        <Row icon={Activity} label="Weekly wellness summary">  <Toggle on={weekly} onClick={() => setWeekly(!weekly)} /></Row>
+        <Row icon={Activity} label="Weekly wellness summary"><Toggle on={weekly} onClick={() => setWeekly(!weekly)} /></Row>
       </Card>
 
-      <SectionTitle>Connected devices</SectionTitle>
-      <Card style={{ marginBottom: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ background: theme.mist, borderRadius: 12, padding: 8, flexShrink: 0 }}>
-            <Camera size={18} color={theme.ocean} />
+      {/* ── Comi Plus ─────────────────────────────────────────────────── */}
+      <SectionTitle>Comi Plus</SectionTitle>
+      <div style={{
+        background: "linear-gradient(135deg, #EAF4FB 0%, #D6C7F0 100%)",
+        borderRadius: 22, padding: "18px 18px 16px", marginBottom: 18,
+        border: "1.5px solid rgba(130,100,220,0.18)",
+        boxShadow: "0 2px 14px rgba(90,142,200,0.10)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <div style={{ background: "rgba(255,255,255,0.8)", borderRadius: 12, padding: 9, flexShrink: 0 }}>
+            <QrCode size={20} color="#6E4FC8" strokeWidth={1.5} />
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.ink, margin: 0 }}>
-              Home pet camera
-            </p>
-            <p style={{ fontFamily: "Nunito", fontSize: 13, margin: "2px 0 0",
-              color: pet.connectedCamera?.connected ? "#2E7D5E" : theme.slate }}>
-              {pet.connectedCamera?.connected
-                ? `Connected · ${pet.connectedCamera.room}`
-                : "Not connected"}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: 0 }}>Smart Dog Tag</p>
+              <span style={{ background: "#6E4FC8", color: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 9, padding: "2px 8px", borderRadius: 999 }}>Coming Soon</span>
+            </div>
+            <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0, lineHeight: 1.5 }}>
+              A collar tag that tracks {pet.name}'s movement, rest, and steps — syncs to Wellness automatically.
             </p>
           </div>
-          <button
-            onClick={() => go("camera_setup")}
-            style={{
-              background: theme.mist, border: "none", borderRadius: 12,
-              padding: "8px 14px", fontFamily: "Nunito", fontWeight: 700,
-              fontSize: 13, color: theme.ocean, cursor: "pointer", flexShrink: 0,
-            }}
-          >
-            {pet.connectedCamera?.connected ? "Manage" : "Connect"}
-          </button>
         </div>
-        {pet.connectedCamera?.connected && (
-          <>
-            <Divider />
-            <div style={{ paddingTop: 8 }}>
-              <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, margin: "0 0 6px" }}>
-                Rest zones: {pet.connectedCamera.restZones.join(", ")}
-              </p>
-              <button onClick={() => go("camera_events")} style={{
-                background: "none", border: "none", color: theme.ocean,
-                fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
-                cursor: "pointer", padding: 0,
-              }}>
-                View activity log →
-              </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          {["Movement", "Rest detect", "Daily steps"].map((label) => (
+            <div key={label} style={{ flex: 1, background: "rgba(255,255,255,0.65)", borderRadius: 12, padding: "8px 8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: theme.ink }}>{label}</span>
             </div>
-          </>
-        )}
-        <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "10px 0 0", lineHeight: 1.5 }}>
-          Camera tracking is optional. Comi only uses activity events, not real video.
+          ))}
+        </div>
+        <button style={{ width: "100%", padding: "11px 0", borderRadius: 999, border: "none", background: "#6E4FC8", fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>
+          Join waitlist for Comi Plus
+        </button>
+        <p style={{ fontFamily: "Nunito", fontSize: 12, color: "#7B5EA7", margin: "10px 0 0", textAlign: "center", lineHeight: 1.5 }}>
+          Smart Dog Tag · QR profile sharing · Advanced Wellness insights
         </p>
-      </Card>
+      </div>
 
+      {/* ── App ───────────────────────────────────────────────────────── */}
       <SectionTitle>App</SectionTitle>
       <Card>
         <div style={{ cursor: "pointer" }} onClick={() => go("reminders")}>
           <Row icon={Bell}    label="Care & Calendar"><ChevronRight size={18} color={theme.slate} /></Row>
         </div>
         <Divider />
-        <Row icon={User}    label="Edit pet profile"><ChevronRight size={18} color={theme.slate} /></Row>
-        <Divider />
         <Row icon={Shield}  label="Privacy & data"><ChevronRight size={18} color={theme.slate} /></Row>
         <Divider />
-        <Row icon={Settings}label="Settings"><ChevronRight size={18} color={theme.slate} /></Row>
+        <Row icon={Settings} label="Settings"><ChevronRight size={18} color={theme.slate} /></Row>
       </Card>
-      <div style={{ marginTop: 16, marginBottom: 8 }}>
-        <button
-          onClick={onAddPet}
-          style={{ width: "100%", padding: "14px 18px", borderRadius: 999, border: "2px dashed #80A0FF", background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 14, color: "#5A8EC8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-        >
-          <Plus size={17} /> Add another pet
-        </button>
-      </div>
-      <p style={{ textAlign: "center", fontFamily: "Nunito", fontSize: 12, color: theme.slate, marginTop: 12 }}>Comi · a friendly pet wellness companion 🐾</p>
+
+      <p style={{ textAlign: "center", fontFamily: "Nunito", fontSize: 12, color: theme.slate, marginTop: 16 }}>Comi · a friendly pet wellness companion</p>
     </div>
   );
 }
@@ -4552,13 +5300,12 @@ function CameraSetupScreen({ go, pets, selectedPetId, onSave }) {
           <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "0 0 18px", lineHeight: 1.5 }}>Please read how Comi uses camera data before connecting.</p>
           <Card style={{ marginBottom: 16 }}>
             {[
-              ["🎥", "Comi uses camera activity only to estimate pet routines like resting, sleeping, and movement."],
-              ["🚫", "This prototype does not store real video or transmit footage anywhere."],
-              ["🔔", "Camera tracking is optional. You can disconnect at any time."],
-              ["🐾", "Comi gives friendly everyday guidance — not medical or veterinary advice."],
-            ].map(([icon, text], i, arr) => (
-              <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < arr.length - 1 ? `1px solid ${theme.line}` : "none" }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
+              "Comi uses camera activity only to estimate pet routines like resting, sleeping, and movement.",
+              "This prototype does not store real video or transmit footage anywhere.",
+              "Camera tracking is optional. You can disconnect at any time.",
+              "Comi gives friendly everyday guidance — not medical or veterinary advice.",
+            ].map((text, i, arr) => (
+              <div key={i} style={{ padding: "10px 0", borderBottom: i < arr.length - 1 ? `1px solid ${theme.line}` : "none" }}>
                 <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.ink, margin: 0, lineHeight: 1.55 }}>{text}</p>
               </div>
             ))}
@@ -4711,7 +5458,7 @@ function BottomNav({ active, go }) {
     { key: "profile",   icon: User,          label: "Profile" },
   ];
   return (
-    <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", padding: "10px 6px 14px", background: "#fff", borderTop: `1px solid ${theme.line}`, flexShrink: 0 }}>
+    <div style={{ position: "relative", zIndex: 20, display: "flex", justifyContent: "space-around", alignItems: "center", padding: "10px 6px 14px", background: "#fff", borderTop: `1px solid ${theme.line}`, flexShrink: 0 }}>
       {tabs.map((t) => {
         const on = active === t.key || (t.key === "insights" && active === "mood_calendar");
         return (
@@ -4740,8 +5487,80 @@ const DEFAULT_PET_TEMPLATE = {
 
 const ensurePetFields = (p) => ({ ...DEFAULT_PET_TEMPLATE, ...p });
 
+function buildDemoCodyPet() {
+  const ago = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d.toISOString().split("T")[0];
+  };
+  const todayStr = new Date().toISOString().split("T")[0];
+  return ensurePetFields({
+    id: 1,
+    name: "Cody",
+    breed: "French Bulldog",
+    birthday: "2022-03-15",
+    weight: "22",
+    weightUnit: "lb",
+    sex: "Male",
+    personality: ["Playful", "Cuddly", "Energetic"],
+    emoji: "🐾",
+    mascot: { breed: "cody", color: "Cream", markings: "Face patch", pose: "Happy" },
+    todayMood: {
+      key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7",
+      category: "positive", intensity: 8, note: "Morning zoomies at the park!",
+      savedAt: new Date().toISOString(),
+    },
+    sleepData: {
+      night: 8, nap: 1.5, quality: "Deep",
+      note: "Good rest after a long afternoon walk.",
+      savedAt: new Date().toISOString(),
+    },
+    moodHistory: [
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 8,  note: "Morning zoomies at the park!", date: todayStr  },
+      { key: "happy",   label: "Happy",   emoji: "😊", color: "#FFE08A", category: "positive", intensity: 7,  note: "",                             date: ago(1)     },
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 9,  note: "Dog park visit!",               date: ago(2)     },
+      { key: "sleepy",  label: "Sleepy",  emoji: "😴", color: "#93C5E0", category: "neutral",  intensity: 4,  note: "Rainy day nap",                 date: ago(3)     },
+      { key: "calm",    label: "Calm",    emoji: "😌", color: "#BFE3C8", category: "positive", intensity: 6,  note: "",                              date: ago(4)     },
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 8,  note: "",                              date: ago(5)     },
+      { key: "anxious", label: "Anxious", emoji: "😟", color: "#FFEEDD", category: "negative", intensity: 3,  note: "Thunderstorm last night",        date: ago(6)     },
+      { key: "happy",   label: "Happy",   emoji: "😊", color: "#FFE08A", category: "positive", intensity: 8,  note: "New toy!",                      date: ago(7)     },
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 10, note: "Beach day!",                    date: ago(8)     },
+      { key: "calm",    label: "Calm",    emoji: "😌", color: "#BFE3C8", category: "positive", intensity: 6,  note: "",                              date: ago(9)     },
+      { key: "sleepy",  label: "Sleepy",  emoji: "😴", color: "#93C5E0", category: "neutral",  intensity: 5,  note: "",                              date: ago(10)    },
+      { key: "happy",   label: "Happy",   emoji: "😊", color: "#FFE08A", category: "positive", intensity: 7,  note: "",                              date: ago(11)    },
+      { key: "sad",     label: "Sad",     emoji: "😢", color: "#D8EAFF", category: "negative", intensity: 3,  note: "Vet visit today",               date: ago(12)    },
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 7,  note: "",                              date: ago(13)    },
+      { key: "calm",    label: "Calm",    emoji: "😌", color: "#BFE3C8", category: "positive", intensity: 5,  note: "",                              date: ago(14)    },
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 8,  note: "Puppy playdate",                date: ago(15)    },
+      { key: "sleepy",  label: "Sleepy",  emoji: "😴", color: "#93C5E0", category: "neutral",  intensity: 4,  note: "Long walk tired him out",       date: ago(16)    },
+      { key: "happy",   label: "Happy",   emoji: "😊", color: "#FFE08A", category: "positive", intensity: 8,  note: "",                              date: ago(17)    },
+      { key: "playful", label: "Playful", emoji: "🎾", color: "#FFB5A7", category: "positive", intensity: 9,  note: "Agility training!",             date: ago(18)    },
+      { key: "calm",    label: "Calm",    emoji: "😌", color: "#BFE3C8", category: "positive", intensity: 6,  note: "",                              date: ago(19)    },
+    ],
+    cameraEvents: [],
+  });
+}
+
+const DEMO_CODY_REMINDERS = [
+  { id: 1, label: "Morning walk",  time: "7:00 AM",  icon: Footprints, on: true  },
+  { id: 2, label: "Breakfast",     time: "7:30 AM",  icon: Utensils,   on: true  },
+  { id: 3, label: "Fresh water",   time: "12:00 PM", icon: Droplets,   on: true  },
+  { id: 4, label: "Evening walk",  time: "6:00 PM",  icon: Footprints, on: true  },
+  { id: 5, label: "Dinner",        time: "6:30 PM",  icon: Utensils,   on: true  },
+  { id: 6, label: "Brushing",      time: "8:00 PM",  icon: Scissors,   on: false },
+];
+
+const DEMO_AI_HISTORY = [
+  { from: "comi", text: "Hi! I'm Comi 🐾 Ask me anything about Cody's food, mood, sleep, or behaviour. Tap a question below or type your own!" },
+  { from: "me",   text: "Can Cody eat strawberries?",                    timestamp: "2026-06-25T10:00:00Z" },
+  { from: "comi", text: "Yes, Cody can enjoy fresh strawberries in moderation! 🍓 They're a good source of vitamin C and fibre. Remove the green tops, slice them small, and offer no more than 2–3 pieces as a treat. Avoid canned or syrup-packed strawberries.", timestamp: "2026-06-25T10:00:05Z" },
+  { from: "me",   text: "Why is Cody scratching his face a lot?",        timestamp: "2026-06-26T14:20:00Z" },
+  { from: "comi", text: "French Bulldogs like Cody can scratch their face due to skin folds collecting moisture, allergies (food or environmental), or irritation from dust and grass. Try gently cleaning the skin folds daily with a soft cloth. If the scratching persists or the skin looks red, a vet check is a good idea! 🐾", timestamp: "2026-06-26T14:20:08Z" },
+];
+
 export default function App() {
   const [screen, setScreen] = useState("welcome");
+  const [editMoodEntry, setEditMoodEntry] = useState(null);
 
   // --- multi-pet state ---
   const [pets, setPets] = useState(() => {
@@ -4801,6 +5620,9 @@ export default function App() {
     { id: 2, title: "Cody slept on bean bag most of the afternoon", category: "Sleep", date: new Date().toISOString().split("T")[0], time: "", repeat: "None", note: "Camera detected a longer nap than usual.", petId: 1, done: false },
   ]);
 
+  // Navigation — defined early so all closures below can safely reference it
+  const go = (s) => setScreen(s);
+
   // derived
   const selectedPet = pets.find(p => p.id === selectedPetId) || pets[0];
 
@@ -4848,6 +5670,16 @@ export default function App() {
     go("setup");
   };
 
+  const [profileSavedMsg, setProfileSavedMsg] = useState(null);
+
+  const handleEditPet = (petId) => {
+    setSelectedPetId(petId);
+    try { localStorage.setItem("comi_selected_pet_id", String(petId)); } catch {}
+    setAddingPet(false);
+    setSetupFrom("profile");
+    go("setup");
+  };
+
   // what gets passed to Setup
   const setupPet      = addingPet ? (setupDraft || { ...DEFAULT_PET_TEMPLATE, id: 0 }) : selectedPet;
   const setupSetPet   = addingPet ? setSetupDraft : updateSelectedPet;
@@ -4878,15 +5710,28 @@ export default function App() {
     }
     : (updatedPet) => {
       updateSelectedPet(updatedPet);
-      go(setupFrom === "profile" ? "profile" : "home");
+      if (setupFrom === "profile") {
+        setProfileSavedMsg(`${updatedPet.name || selectedPet.name}'s profile updated.`);
+        go("profile");
+      } else {
+        go("home");
+      }
     };
 
   const setupOnBack = addingPet
     ? () => { setAddingPet(false); setSetupDraft(null); setSetupDraftPhoto(null); go("home"); }
     : () => go(setupFrom);
 
-  const go = (s) => setScreen(s);
-  const TAB_SCREENS = ["home", "insights", "mood_calendar", "community", "explore", "profile"];
+  // Loads all Cody demo data when the owner account logs in
+  const handleDemoLogin = () => {
+    const demoPet = buildDemoCodyPet();
+    savePets([demoPet]);
+    setSelectedPetId(1);
+    try { localStorage.setItem("comi_selected_pet_id", "1"); } catch {}
+    setPetReminders({ 1: DEMO_CODY_REMINDERS });
+    setPetAiHistory({ 1: DEMO_AI_HISTORY });
+  };
+  const TAB_SCREENS = ["home", "insights", "mood_calendar", "community", "profile"];
   const showNav = TAB_SCREENS.includes(screen);
 
   const render = () => {
@@ -4894,14 +5739,14 @@ export default function App() {
     const photo = petPhotos[selectedPetId] || null;
     switch (screen) {
       case "welcome":   return <Welcome go={go} />;
-      case "auth":      return <Auth go={go} onSignup={setUserData} />;
+      case "auth":      return <Auth go={go} onSignup={setUserData} onDemoLogin={handleDemoLogin} />;
       case "privacy":   return <PrivacyScreen go={go} />;
       case "setup":     return <Setup go={go} pet={setupPet} setPet={setupSetPet} petPhoto={setupPhoto} setPetPhoto={setupSetPhoto} onSave={setupOnSave} onBack={setupOnBack} isAddingPet={addingPet} />;
       case "home":      return <HomeScreen go={go} pet={sp} todayMood={sp.todayMood} reminders={selectedReminders} petPhoto={photo} onOpenPetSwitcher={() => setShowPetSwitcher(true)} />;
-      case "mood":          return <MoodScreen go={go} pet={sp} saveMood={saveMood} />;
-      case "mood_calendar": return <MoodCalendarScreen go={go} pet={sp} />;
+      case "mood":          return <MoodScreen go={go} pet={sp} saveMood={saveMood} initialEntry={editMoodEntry} onClearEdit={() => setEditMoodEntry(null)} />;
+      case "mood_calendar": return <MoodCalendarScreen go={go} pet={sp} onEditEntry={(entry) => { setEditMoodEntry(entry); go("mood"); }} />;
       case "behavior":  return <BehaviorScreen go={go} pet={sp} sleepData={sp.sleepData} saveSleep={saveSleep} onUpdateCamEvents={updateCamEvents} />;
-      case "insights":   return <MoodCalendarScreen go={go} pet={sp} />;
+      case "insights":   return <MoodCalendarScreen go={go} pet={sp} onEditEntry={(entry) => { setEditMoodEntry(entry); go("mood"); }} />;
       case "wellness_old": return <InsightsScreen go={go} pet={sp} sleepData={sp.sleepData} todayMood={sp.todayMood} />;
       case "ai":        return <AiScreen go={go} pet={sp} aiHistory={selectedAiHistory} setAiHistory={setSelectedAiHistory} />;
       case "reminders": return <CalendarScreen go={go} reminders={selectedReminders} setReminders={setSelectedReminders} calendarNotes={calendarNotes} setCalendarNotes={setCalendarNotes} pet={selectedPet} pets={pets} />;
@@ -4909,7 +5754,7 @@ export default function App() {
       case "explore":       return <ExploreScreen pet={sp} />;
       case "camera_setup":  return <CameraSetupScreen go={go} pets={pets} selectedPetId={selectedPetId} onSave={saveCamera} />;
       case "camera_events": return <CameraEventsScreen go={go} pet={sp} onUpdateEvents={updateCamEvents} />;
-      case "profile":       return <ProfileScreen go={go} pet={sp} petPhoto={photo} goToEditSetup={goToEditSetup} onAddPet={handleAddNewPet} />;
+      case "profile":       return <ProfileScreen go={go} pet={sp} petPhoto={photo} onAddPet={handleAddNewPet} pets={pets} petPhotos={petPhotos} onEditPet={handleEditPet} savedMsg={profileSavedMsg} onClearSaved={() => setProfileSavedMsg(null)} />;
       default:          return <Welcome go={go} />;
     }
   };
@@ -4924,14 +5769,14 @@ export default function App() {
       `}</style>
 
       {/* phone frame */}
-      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : screen === "auth" ? "linear-gradient(160deg, #A8D4EA 0%, #7EBCDA 45%, #5A9EC8 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
+      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : screen === "auth" ? "linear-gradient(160deg, #A8D4EA 0%, #7EBCDA 45%, #5A9EC8 100%)" : screen === "home" ? "linear-gradient(170deg, #A8CCDF 0%, #5FA8CF 42%, #3D88BE 100%)" : screen === "community" ? "linear-gradient(135deg, #4A82C0 0%, #6AAED8 55%, #93C5E0 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
         {/* faux status bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth" || screen === "home" || screen === "community") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
           <span>9:41</span>
-          <span style={{ display: "flex", gap: 4, alignItems: "center" }}><PawPrint size={14} color={(screen === "welcome" || screen === "auth") ? "#fff" : theme.ocean} /> Comi</span>
+          <span style={{ display: "flex", gap: 4, alignItems: "center", fontFamily: "Quicksand", fontWeight: 700 }}>Comi</span>
         </div>
         {/* scrollable screen content */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1, overflowY: "auto", minHeight: 0 }}>
           {render()}
         </div>
         {/* bottom nav */}
