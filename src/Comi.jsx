@@ -5458,7 +5458,7 @@ function BottomNav({ active, go }) {
     { key: "profile",   icon: User,          label: "Profile" },
   ];
   return (
-    <div style={{ position: "relative", zIndex: 20, display: "flex", justifyContent: "space-around", alignItems: "center", padding: "10px 6px 14px", background: "#fff", borderTop: `1px solid ${theme.line}`, flexShrink: 0 }}>
+    <div className="comi-bottom-nav" style={{ position: "relative", zIndex: 20, display: "flex", justifyContent: "space-around", alignItems: "center", padding: "10px 6px 14px", background: "#fff", borderTop: `1px solid ${theme.line}`, flexShrink: 0 }}>
       {tabs.map((t) => {
         const on = active === t.key || (t.key === "insights" && active === "mood_calendar");
         return (
@@ -5760,18 +5760,43 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#D8EAF8,#EAF4FB)", display: "flex", justifyContent: "center", alignItems: "center", padding: 16, fontFamily: "Nunito, sans-serif" }}>
+    <div className="comi-shell" style={{ minHeight: "100vh", background: "linear-gradient(160deg,#D8EAF8,#EAF4FB)", display: "flex", justifyContent: "center", alignItems: "center", padding: 16, fontFamily: "Nunito, sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 0; height: 0; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+
+        /* On real phone screens, drop the desktop "mockup" chrome and go edge-to-edge */
+        @media (max-width: 600px) {
+          .comi-shell {
+            min-height: 100dvh !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
+          .comi-phone-frame {
+            width: 100% !important;
+            height: 100dvh !important;
+            max-height: none !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .comi-status-bar {
+            padding-top: max(10px, env(safe-area-inset-top)) !important;
+            padding-left: max(22px, env(safe-area-inset-left)) !important;
+            padding-right: max(22px, env(safe-area-inset-right)) !important;
+          }
+          .comi-bottom-nav {
+            padding-bottom: env(safe-area-inset-bottom) !important;
+          }
+        }
       `}</style>
 
       {/* phone frame */}
-      <div style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : screen === "auth" ? "linear-gradient(160deg, #A8D4EA 0%, #7EBCDA 45%, #5A9EC8 100%)" : screen === "home" ? "linear-gradient(170deg, #A8CCDF 0%, #5FA8CF 42%, #3D88BE 100%)" : screen === "community" ? "linear-gradient(135deg, #4A82C0 0%, #6AAED8 55%, #93C5E0 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
+      <div className="comi-phone-frame" style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : screen === "auth" ? "linear-gradient(160deg, #A8D4EA 0%, #7EBCDA 45%, #5A9EC8 100%)" : screen === "home" ? "linear-gradient(170deg, #A8CCDF 0%, #5FA8CF 42%, #3D88BE 100%)" : screen === "community" ? "linear-gradient(135deg, #4A82C0 0%, #6AAED8 55%, #93C5E0 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
         {/* faux status bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth" || screen === "home" || screen === "community") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
+        <div className="comi-status-bar" style={{ display: "flex", justifyContent: "space-between", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth" || screen === "home" || screen === "community") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
           <span>9:41</span>
           <span style={{ display: "flex", gap: 4, alignItems: "center", fontFamily: "Quicksand", fontWeight: 700 }}>Comi</span>
         </div>
