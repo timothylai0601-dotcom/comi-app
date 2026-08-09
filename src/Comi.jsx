@@ -22,6 +22,8 @@ import IconSleepy   from "./ICON-SLEEPY.png";
 import IconThinking from "./ICON-THINKING.png";
 import IconWorry    from "./ICON-WORRY.png";
 
+import { generateMascotPack } from "./services/mascotGenerator";
+
 /* ============================================================
    COMI — Pet Wellness App Prototype  (Version 2)
    "I can finally understand my pet."
@@ -820,7 +822,16 @@ const MASCOT_COLORS    = ["Grey", "Cream", "Brown", "Black", "White", "Golden", 
 const MASCOT_MARKINGS  = ["No markings", "Face patch", "Spots", "Dark ears", "Light belly"];
 const MASCOT_POSES     = ["Happy", "Sleepy", "Playful", "Calm", "Worried"];
 
+/* Custom AI mascot pack takes priority over the generic breed mascot
+   whenever it's ready. Falls through to the existing breed logic below
+   otherwise (no custom pack, still generating, or generation failed). */
+function hasReadyMascotPack(pet) {
+  return pet?.mascotMode === "ai" && pet?.mascotStatus === "ready" && !!pet?.mascotPack;
+}
+
 function getMascotImage(pet) {
+  if (hasReadyMascotPack(pet) && pet.mascotPack.base) return pet.mascotPack.base;
+
   const breed = pet?.mascot?.breed;
   if (breed) {
     const found = MASCOT_BREEDS.find(b => b.label === breed);
@@ -859,11 +870,19 @@ const mascotMoodAssets = {
   "Mixed breed":      { fun: ComiMain,   sad: ComiMain,   worry: ComiMain,   sleepy: ComiMain,   thinking: ComiMain,   neutral: ComiMain   },
 };
 
-/* Returns the right mascot image for a pet's breed + mood.
-   Fallback chain: breed+mood → breed neutral → breed image → ComiMain */
+/* Returns the right mascot image for a pet's mood.
+   Fallback chain: custom mood mascot → custom base mascot →
+   breed+mood → breed neutral → breed image → ComiMain */
 function getMascotMoodImage(pet, moodKey) {
+  const slot = MOOD_TO_SLOT[moodKey] || "neutral";
+
+  if (hasReadyMascotPack(pet)) {
+    const pack = pet.mascotPack;
+    if (slot !== "neutral" && pack[slot]) return pack[slot];
+    if (pack.base) return pack.base;
+  }
+
   const breed       = pet?.mascot?.breed;
-  const slot        = MOOD_TO_SLOT[moodKey] || "neutral";
   const breedAssets = breed ? mascotMoodAssets[breed] : null;
   if (breedAssets?.[slot])  return breedAssets[slot];
   if (breedAssets?.neutral) return breedAssets.neutral;
@@ -1095,15 +1114,17 @@ function BreedDropdown({ value, onChange }) {
   );
 }
 
-/* Pet avatar — shows uploaded photo or pet's selected mascot as fallback */
+/* Pet avatar — shows the pet's approved custom mascot first (once ready),
+   otherwise the uploaded profile photo, otherwise the selected/breed mascot. */
 function PetAvatar({ pet, petPhoto, size = 48, style }) {
+  const showPhoto = petPhoto && !hasReadyMascotPack(pet);
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
       background: theme.sky, display: "grid", placeItems: "center",
       overflow: "hidden", flexShrink: 0, ...style,
     }}>
-      {petPhoto
+      {showPhoto
         ? <img src={petPhoto} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="pet" />
         : <img src={getMascotImage(pet)} alt={pet?.name || "Comi"} style={{ width: "85%", height: "85%", objectFit: "contain" }} />
       }
@@ -1895,7 +1916,7 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
   const [petSex,           setPetSex]           = useState(pet.sex || "");
   const [lastHeatDate,     setLastHeatDate]     = useState(pet.lastHeatDate || "");
   const [heatNotes,        setHeatNotes]        = useState(pet.heatNotes || "");
-  // mascot customization
+  // mascot customization (default breed mascot picker — unchanged fallback path)
   const [mascotBreed,    setMascotBreed]    = useState(pet.mascot?.breed    || "");
   const [mascotColor,    setMascotColor]    = useState(pet.mascot?.color    || "");
   const [mascotMarkings, setMascotMarkings] = useState(pet.mascot?.markings || "No markings");
@@ -1905,16 +1926,61 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
     ? (MASCOT_BREEDS.find(b => b.label === mascotBreed)?.image || ComiMain)
     : ComiMain;
 
+  // ── AI Custom Pet Mascot ──
+  const hasApprovedPack = pet.mascotMode === "ai" && pet.mascotStatus === "ready" && !!pet.mascotPack;
+  const [mascotFlow, setMascotFlow] = useState(
+    hasApprovedPack ? "approved" : (mascotBreed ? "breed" : "choice")
+  ); // "choice" | "photo-preview" | "generating" | "result" | "failed" | "approved" | "breed"
+  const [aiSourcePhoto,       setAiSourcePhoto]       = useState(pet.mascotSourcePhoto || null);
+  const [aiMascotPack,        setAiMascotPack]        = useState(pet.mascotPack || null);
+  const [aiMascotGeneratedAt, setAiMascotGeneratedAt] = useState(pet.mascotGeneratedAt || null);
+  const [loadingLine,         setLoadingLine]         = useState("Creating your Comi mascot...");
+
+  const handleMascotFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAiSourcePhoto(reader.result);
+      setMascotFlow("photo-preview");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const runGenerateMascot = async () => {
+    if (!aiSourcePhoto) return;
+    setMascotFlow("generating");
+    setLoadingLine("Creating your Comi mascot...");
+    try {
+      const pack = await generateMascotPack({
+        petName: pet.name,
+        breed: pet.breed,
+        sourcePhoto: aiSourcePhoto,
+        styleReference: "cody",
+        onProgress: setLoadingLine,
+      });
+      setAiMascotPack(pack);
+      setAiMascotGeneratedAt(new Date().toISOString());
+      setMascotFlow("result");
+    } catch {
+      setMascotFlow("failed");
+    }
+  };
+
   const handleCreateProfile = () => {
     const personalities = [primary, second].filter(Boolean);
-    const mascot = mascotBreed
+    const breedMascot = mascotBreed
       ? { breed: mascotBreed, color: mascotColor || "Mixed", markings: mascotMarkings, pose: mascotPose }
       : null;
+    const aiApproved = mascotFlow === "approved" && aiMascotPack;
     const updatedPet = {
       ...pet,
       sex: petSex,
       personality: personalities,
-      mascot,
+      mascot: breedMascot,
+      ...(aiApproved
+        ? { mascotMode: "ai", mascotStatus: "ready", mascotPack: aiMascotPack, mascotSourcePhoto: aiSourcePhoto, mascotGeneratedAt: aiMascotGeneratedAt }
+        : { mascotMode: "defaultBreed" }), // preserves any existing mascotPack untouched — only the mode switches
       ...(petSex === "female" && { lastHeatDate, heatNotes }),
     };
     if (onSave) {
@@ -1966,13 +2032,13 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
               Add a pet photo
             </p>
             {/* Take photo (camera capture) */}
-            <label style={{ display: "block", padding: "14px 16px", borderRadius: 16, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.ink, marginBottom: 10, cursor: "pointer", textAlign: "center" }}>
-              📷 Take photo
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", borderRadius: 16, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.ink, marginBottom: 10, cursor: "pointer" }}>
+              <Camera size={16} /> Take photo
               <input type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: "none" }} />
             </label>
             {/* Choose from library */}
-            <label style={{ display: "block", padding: "14px 16px", borderRadius: 16, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.ink, marginBottom: 10, cursor: "pointer", textAlign: "center" }}>
-              🖼️ Choose from photo library
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", borderRadius: 16, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.ink, marginBottom: 10, cursor: "pointer" }}>
+              <Camera size={16} /> Choose from photo library
               <input type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
             </label>
             <button onClick={() => setShowPhotoOptions(false)} style={{ width: "100%", padding: 14, borderRadius: 16, border: "none", background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.slate, cursor: "pointer" }}>
@@ -1988,7 +2054,7 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
 
       <label style={labelStyle}>Sex</label>
       <div style={{ display: "flex", gap: 10 }}>
-        {[["male", "♂ Male"], ["female", "♀ Female"]].map(([val, lbl]) => (
+        {[["male", "Male"], ["female", "Female"]].map(([val, lbl]) => (
           <button key={val} onClick={() => setPetSex(val)} style={{
             flex: 1, padding: "13px 0", borderRadius: 14, cursor: "pointer",
             border: `2px solid ${petSex === val ? theme.ocean : "#80A0FF"}`,
@@ -2064,7 +2130,7 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
       {petSex === "female" && (
         <div style={{ background: "#FEF0F5", borderRadius: 18, padding: 16, marginBottom: 16, border: "2px solid #F9C7D8" }}>
           <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 14px" }}>
-            ♀ Female health
+            Female health
           </p>
           <label style={labelStyle}>Last heat / cycle date (optional)</label>
           <input
@@ -2104,106 +2170,238 @@ function Setup({ go, pet, setPet, petPhoto, setPetPhoto, onSave, onBack, isAddin
       <label style={labelStyle}>Second personality (optional)</label>
       <PersonalityPicker value={second} onChange={setSecond} exclude={primary} placeholder="Add a second trait (optional)" />
 
-      {/* ── Mascot customization ── */}
+      {/* ── Create your pet mascot ── */}
       <div style={{ marginTop: 28, marginBottom: 4 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <div style={{ flex: 1, height: 1, background: "#E6EEF5" }} />
-          <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: "#7C8B98", whiteSpace: "nowrap" }}>Choose your Comi mascot</span>
+          <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: "#7C8B98", whiteSpace: "nowrap" }}>Create your pet mascot</span>
           <div style={{ flex: 1, height: 1, background: "#E6EEF5" }} />
         </div>
         <p style={{ fontFamily: "Nunito", fontSize: 13, color: "#7C8B98", margin: "0 0 14px", textAlign: "center", lineHeight: 1.5 }}>
-          Pick a mascot style that looks like {pet.name || "your pet"}. This will be your Comi character.
+          Turn a photo of {pet.name || "your pet"} into their own Comi-style mascot — used across the whole app instead of a generic breed mascot.
         </p>
 
-        {/* Breed selector */}
-        <label style={labelStyle}>Breed / style</label>
-        <div style={{ display: "flex", gap: 9, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
-          {MASCOT_BREEDS.map(b => (
-            <button
-              key={b.label}
-              onClick={() => setMascotBreed(mascotBreed === b.label ? "" : b.label)}
-              style={{
-                flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center",
-                gap: 6, padding: "10px 10px 8px", borderRadius: 18, cursor: "pointer",
-                border: `2px solid ${mascotBreed === b.label ? "#5A8EC8" : "#80A0FF"}`,
-                background: mascotBreed === b.label ? "#EAF4FB" : "#fff",
-                minWidth: 72,
-              }}
-            >
-              <img src={b.image} alt={b.label} style={{ width: 48, height: 48, objectFit: "contain" }} />
-              <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: mascotBreed === b.label ? "#5A8EC8" : "#7C8B98", textAlign: "center", lineHeight: 1.3 }}>
-                {b.label}
-              </span>
+        {/* Step: choice */}
+        {mascotFlow === "choice" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", borderRadius: 16, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 14, color: theme.ink, cursor: "pointer" }}>
+              <Camera size={16} /> Take photo
+              <input type="file" accept="image/*" capture="environment" onChange={handleMascotFile} style={{ display: "none" }} />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", borderRadius: 16, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 14, color: theme.ink, cursor: "pointer" }}>
+              <Camera size={16} /> Upload from library
+              <input type="file" accept="image/*" onChange={handleMascotFile} style={{ display: "none" }} />
+            </label>
+            <button onClick={() => setMascotFlow("breed")} style={{ padding: "14px 16px", borderRadius: 16, border: `2px solid #80A0FF`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 14, color: theme.slate, cursor: "pointer" }}>
+              Use default breed mascot instead
             </button>
-          ))}
-        </div>
-
-        {/* Color */}
-        <label style={labelStyle}>Main color</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
-          {MASCOT_COLORS.map(c => (
-            <button key={c} onClick={() => setMascotColor(mascotColor === c ? "" : c)} style={{
-              padding: "8px 14px", borderRadius: 999, cursor: "pointer",
-              border: `2px solid ${mascotColor === c ? "#5A8EC8" : "#80A0FF"}`,
-              background: mascotColor === c ? "#EAF4FB" : "#fff",
-              fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
-              color: mascotColor === c ? "#5A8EC8" : "#7C8B98",
-            }}>{c}</button>
-          ))}
-        </div>
-
-        {/* Markings */}
-        <label style={labelStyle}>Markings</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
-          {MASCOT_MARKINGS.map(m => (
-            <button key={m} onClick={() => setMascotMarkings(m)} style={{
-              padding: "8px 14px", borderRadius: 999, cursor: "pointer",
-              border: `2px solid ${mascotMarkings === m ? "#5A8EC8" : "#80A0FF"}`,
-              background: mascotMarkings === m ? "#EAF4FB" : "#fff",
-              fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
-              color: mascotMarkings === m ? "#5A8EC8" : "#7C8B98",
-            }}>{m}</button>
-          ))}
-        </div>
-
-        {/* Personality pose */}
-        <label style={labelStyle}>Personality pose</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 20 }}>
-          {MASCOT_POSES.map(p => (
-            <button key={p} onClick={() => setMascotPose(p)} style={{
-              padding: "8px 14px", borderRadius: 999, cursor: "pointer",
-              border: `2px solid ${mascotPose === p ? "#5A8EC8" : "#80A0FF"}`,
-              background: mascotPose === p ? "#EAF4FB" : "#fff",
-              fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
-              color: mascotPose === p ? "#5A8EC8" : "#7C8B98",
-            }}>{p}</button>
-          ))}
-        </div>
-
-        {/* Preview card */}
-        {mascotBreed && (
-          <div style={{ background: "linear-gradient(135deg, #EAF4FB 0%, #D6EEF9 100%)", borderRadius: 24, padding: "18px 18px 16px", marginBottom: 18, border: "2px solid #80A0FF", textAlign: "center" }}>
-            <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#5A8EC8", margin: "0 0 10px" }}>
-              Meet {pet.name || "your pet"}'s Comi mascot
-            </p>
-            <img src={mascotPreviewImg} alt={mascotBreed} style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 10 }} />
-            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-              {[mascotBreed, mascotColor, mascotMarkings, mascotPose].filter(Boolean).map(tag => (
-                <span key={tag} style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: "#5A8EC8", background: "#fff", padding: "3px 10px", borderRadius: 999 }}>{tag}</span>
-              ))}
-            </div>
-            <p style={{ fontFamily: "Nunito", fontSize: 11, color: "#7C8B98", margin: 0, lineHeight: 1.5, fontStyle: "italic" }}>
-              Future version: Comi can turn your pet photo into a custom illustrated mascot.
+            <p style={{ fontFamily: "Nunito", fontSize: 11, color: "#7C8B98", margin: "4px 0 0", lineHeight: 1.5, textAlign: "center" }}>
+              Your pet photo is used only to create your Comi mascot. This prototype stores the image locally. In a future version you'll be able to delete or regenerate your mascot anytime.
             </p>
           </div>
         )}
 
-        {!mascotBreed && (
-          <div style={{ textAlign: "center", padding: "14px 0 6px" }}>
-            <p style={{ fontFamily: "Nunito", fontSize: 13, color: "#7C8B98", margin: 0 }}>
-              Select a breed above to preview your mascot
-            </p>
+        {/* Step: photo preview, ready to generate */}
+        {mascotFlow === "photo-preview" && (
+          <div style={{ textAlign: "center", marginBottom: 8 }}>
+            <img src={aiSourcePhoto} alt="Uploaded pet photo" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 20, marginBottom: 14, border: "3px solid #fff", boxShadow: theme.shadow }} />
+            <Button onClick={runGenerateMascot}>Generate mascot</Button>
+            <div style={{ height: 8 }} />
+            <button onClick={() => setMascotFlow("choice")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.ocean, padding: 6 }}>
+              Choose a different photo
+            </button>
+            <br />
+            <button onClick={() => setMascotFlow("breed")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito", fontSize: 12, color: "#7C8B98", padding: 6 }}>
+              Use default breed mascot instead
+            </button>
           </div>
+        )}
+
+        {/* Step: generating */}
+        {mascotFlow === "generating" && (
+          <div style={{ textAlign: "center", padding: "22px 10px", marginBottom: 8 }}>
+            <img src={aiSourcePhoto} alt="Uploaded pet photo" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 18, marginBottom: 16, opacity: 0.55 }} />
+            <div style={{ width: 30, height: 30, border: `3px solid ${theme.mist}`, borderTopColor: theme.ocean, borderRadius: "50%", margin: "0 auto 14px", animation: "comiSpin 0.9s linear infinite" }} />
+            <style>{`@keyframes comiSpin { to { transform: rotate(360deg); } }`}</style>
+            <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: 0 }}>{loadingLine}</p>
+          </div>
+        )}
+
+        {/* Step: result — pending approval */}
+        {mascotFlow === "result" && aiMascotPack && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ background: "linear-gradient(135deg, #EAF4FB 0%, #D6EEF9 100%)", borderRadius: 24, padding: "18px 18px 16px", marginBottom: 14, border: "2px solid #80A0FF", textAlign: "center" }}>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#5A8EC8", margin: "0 0 10px" }}>
+                Meet {pet.name || "your pet"}'s Comi mascot
+              </p>
+              <img src={aiMascotPack.base} alt="Generated mascot" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 10, borderRadius: "50%" }} />
+              <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 4 }}>
+                {["fun", "sad", "sleepy", "thinking", "worry"].map(slot => (
+                  <img key={slot} src={aiMascotPack[slot]} alt={slot} title={slot} style={{ width: 40, height: 40, objectFit: "contain", borderRadius: "50%", border: "2px solid #fff", boxShadow: theme.shadow }} />
+                ))}
+              </div>
+              <p style={{ fontFamily: "Nunito", fontSize: 11, color: "#7C8B98", margin: "10px 0 0", lineHeight: 1.5, fontStyle: "italic" }}>
+                Prototype preview — simulated mascot generation.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <Button onClick={() => setMascotFlow("approved")}>Approve mascot</Button>
+              <button onClick={runGenerateMascot} style={{ padding: "12px 16px", borderRadius: 999, border: `2px solid #80A0FF`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.ocean, cursor: "pointer" }}>
+                Regenerate
+              </button>
+              <button onClick={() => setMascotFlow("breed")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito", fontSize: 12, color: "#7C8B98", padding: 6 }}>
+                Use default breed mascot instead
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: generation failed */}
+        {mascotFlow === "failed" && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ background: "#FFF4F3", border: `1.5px solid ${theme.coral}`, borderRadius: 16, padding: "14px 16px", marginBottom: 12 }}>
+              <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.ink, margin: 0, lineHeight: 1.5 }}>
+                Comi could not create the mascot this time. You can try again or use a default breed mascot.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <Button onClick={runGenerateMascot}>Try again</Button>
+              <button onClick={() => setMascotFlow("breed")} style={{ padding: "12px 16px", borderRadius: 999, border: `2px solid #80A0FF`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.slate, cursor: "pointer" }}>
+                Use default breed mascot
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: approved — final summary, editable */}
+        {mascotFlow === "approved" && aiMascotPack && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ background: "linear-gradient(135deg, #EAF4FB 0%, #D6EEF9 100%)", borderRadius: 24, padding: "18px 18px 16px", marginBottom: 14, border: "2px solid #80A0FF", textAlign: "center" }}>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#5A8EC8", margin: "0 0 10px" }}>
+                ✓ {pet.name || "Your pet"}'s Comi mascot is ready
+              </p>
+              <img src={aiMascotPack.base} alt="Approved mascot" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 10, borderRadius: "50%" }} />
+              <p style={{ fontFamily: "Nunito", fontSize: 11, color: "#7C8B98", margin: 0, lineHeight: 1.5 }}>
+                This mascot will be used across Home, mood check-in, Wellness calendar, and more.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setMascotFlow("choice")} style={{ flex: 1, padding: "12px 10px", borderRadius: 999, border: `2px solid #80A0FF`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.ocean, cursor: "pointer" }}>
+                Change photo
+              </button>
+              <button onClick={() => setMascotFlow("breed")} style={{ flex: 1, padding: "12px 10px", borderRadius: 999, border: `2px solid #80A0FF`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.slate, cursor: "pointer" }}>
+                Use default instead
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: default breed mascot picker (existing flow, unchanged) */}
+        {mascotFlow === "breed" && (
+          <>
+            <p style={{ fontFamily: "Nunito", fontSize: 13, color: "#7C8B98", margin: "0 0 14px", textAlign: "center", lineHeight: 1.5 }}>
+              Pick a mascot style that looks like {pet.name || "your pet"}. This will be your Comi character.
+            </p>
+
+            {/* Breed selector */}
+            <label style={labelStyle}>Breed / style</label>
+            <div style={{ display: "flex", gap: 9, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
+              {MASCOT_BREEDS.map(b => (
+                <button
+                  key={b.label}
+                  onClick={() => setMascotBreed(mascotBreed === b.label ? "" : b.label)}
+                  style={{
+                    flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center",
+                    gap: 6, padding: "10px 10px 8px", borderRadius: 18, cursor: "pointer",
+                    border: `2px solid ${mascotBreed === b.label ? "#5A8EC8" : "#80A0FF"}`,
+                    background: mascotBreed === b.label ? "#EAF4FB" : "#fff",
+                    minWidth: 72,
+                  }}
+                >
+                  <img src={b.image} alt={b.label} style={{ width: 48, height: 48, objectFit: "contain" }} />
+                  <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: mascotBreed === b.label ? "#5A8EC8" : "#7C8B98", textAlign: "center", lineHeight: 1.3 }}>
+                    {b.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Color */}
+            <label style={labelStyle}>Main color</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
+              {MASCOT_COLORS.map(c => (
+                <button key={c} onClick={() => setMascotColor(mascotColor === c ? "" : c)} style={{
+                  padding: "8px 14px", borderRadius: 999, cursor: "pointer",
+                  border: `2px solid ${mascotColor === c ? "#5A8EC8" : "#80A0FF"}`,
+                  background: mascotColor === c ? "#EAF4FB" : "#fff",
+                  fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
+                  color: mascotColor === c ? "#5A8EC8" : "#7C8B98",
+                }}>{c}</button>
+              ))}
+            </div>
+
+            {/* Markings */}
+            <label style={labelStyle}>Markings</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
+              {MASCOT_MARKINGS.map(m => (
+                <button key={m} onClick={() => setMascotMarkings(m)} style={{
+                  padding: "8px 14px", borderRadius: 999, cursor: "pointer",
+                  border: `2px solid ${mascotMarkings === m ? "#5A8EC8" : "#80A0FF"}`,
+                  background: mascotMarkings === m ? "#EAF4FB" : "#fff",
+                  fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
+                  color: mascotMarkings === m ? "#5A8EC8" : "#7C8B98",
+                }}>{m}</button>
+              ))}
+            </div>
+
+            {/* Personality pose */}
+            <label style={labelStyle}>Personality pose</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 20 }}>
+              {MASCOT_POSES.map(p => (
+                <button key={p} onClick={() => setMascotPose(p)} style={{
+                  padding: "8px 14px", borderRadius: 999, cursor: "pointer",
+                  border: `2px solid ${mascotPose === p ? "#5A8EC8" : "#80A0FF"}`,
+                  background: mascotPose === p ? "#EAF4FB" : "#fff",
+                  fontFamily: "Nunito", fontWeight: 700, fontSize: 13,
+                  color: mascotPose === p ? "#5A8EC8" : "#7C8B98",
+                }}>{p}</button>
+              ))}
+            </div>
+
+            {/* Preview card */}
+            {mascotBreed && (
+              <div style={{ background: "linear-gradient(135deg, #EAF4FB 0%, #D6EEF9 100%)", borderRadius: 24, padding: "18px 18px 16px", marginBottom: 18, border: "2px solid #80A0FF", textAlign: "center" }}>
+                <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#5A8EC8", margin: "0 0 10px" }}>
+                  Meet {pet.name || "your pet"}'s Comi mascot
+                </p>
+                <img src={mascotPreviewImg} alt={mascotBreed} style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 10 }} />
+                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  {[mascotBreed, mascotColor, mascotMarkings, mascotPose].filter(Boolean).map(tag => (
+                    <span key={tag} style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: "#5A8EC8", background: "#fff", padding: "3px 10px", borderRadius: 999 }}>{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!mascotBreed && (
+              <div style={{ textAlign: "center", padding: "14px 0 6px" }}>
+                <p style={{ fontFamily: "Nunito", fontSize: 13, color: "#7C8B98", margin: 0 }}>
+                  Select a breed above to preview your mascot
+                </p>
+              </div>
+            )}
+
+            {aiMascotPack && (
+              <button onClick={() => setMascotFlow("approved")} style={{ width: "100%", padding: 12, borderRadius: 999, border: "none", background: "none", cursor: "pointer", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.ocean }}>
+                Use my generated AI mascot instead
+              </button>
+            )}
+            {!aiMascotPack && (
+              <button onClick={() => setMascotFlow("choice")} style={{ width: "100%", padding: 12, borderRadius: 999, border: "none", background: "none", cursor: "pointer", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.ocean }}>
+                Try an AI mascot from a photo instead
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -2289,6 +2487,13 @@ function HomeScreen({ go, pet, todayMood, reminders, petPhoto, onOpenPetSwitcher
         {todayMood?.intensity && (
           <p style={{ flexShrink: 0, fontFamily: "Nunito, sans-serif", fontSize: 14, color: "rgba(255,255,255,0.72)", margin: "4px 0 0" }}>
             Mood strength: {todayMood.intensity}/10
+          </p>
+        )}
+
+        {/* First-time helper text */}
+        {!todayMood && (
+          <p style={{ flexShrink: 0, fontFamily: "Nunito, sans-serif", fontSize: 13, color: "rgba(255,255,255,0.72)", margin: "4px 0 0", textAlign: "center" }}>
+            Start by updating today's mood.
           </p>
         )}
 
@@ -2437,8 +2642,10 @@ function MoodScreen({ go, pet, saveMood, initialEntry, onClearEdit }) {
           {/* 5 buttons in a row — images scale to fit column width */}
           <div style={{ display: "flex", gap: 6 }}>
             {MOOD_ICONS.map(({ key, label, src, moodKey }) => {
-              const active = picked === moodKey;
-              const entry  = MOODS.find(m => m.key === moodKey);
+              const active   = picked === moodKey;
+              const entry    = MOODS.find(m => m.key === moodKey);
+              // Use this pet's own mascot-pack image for the slot once ready, else the generic icon
+              const iconSrc  = (hasReadyMascotPack(pet) && pet.mascotPack[key]) ? pet.mascotPack[key] : src;
               return (
                 <button key={key} onClick={() => setPicked(active ? null : moodKey)}
                   style={{
@@ -2453,7 +2660,7 @@ function MoodScreen({ go, pet, saveMood, initialEntry, onClearEdit }) {
                   }}
                 >
                   {/* Image uses 100% of button width so it always fits */}
-                  <img src={src} alt={label} style={{ width: "100%", maxWidth: 56, height: "auto", aspectRatio: "1", objectFit: "contain", display: "block" }} />
+                  <img src={iconSrc} alt={label} style={{ width: "100%", maxWidth: 56, height: "auto", aspectRatio: "1", objectFit: "contain", display: "block" }} />
                   <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 10, color: active ? theme.ocean : theme.ink, whiteSpace: "nowrap" }}>{label}</span>
                 </button>
               );
@@ -2508,6 +2715,9 @@ function MoodScreen({ go, pet, saveMood, initialEntry, onClearEdit }) {
 
         {/* Note */}
         <label style={labelStyle}>Add a note (optional)</label>
+        <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "-4px 0 6px" }}>
+          Add a note so you can review it later.
+        </p>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -2539,6 +2749,14 @@ function getCustomMoodIcon(moodKey) {
   if (slot === "thinking") return IconThinking;
   if (slot === "worry")    return IconWorry;
   return null;
+}
+
+/* Wellness calendar / daily-detail icon — prefers the pet's own custom
+   mascot-pack mood image, falling back to the generic mood icon set. */
+function getPetMoodIcon(pet, moodKey) {
+  const slot = MOOD_TO_SLOT[moodKey] || null;
+  if (slot && hasReadyMascotPack(pet) && pet.mascotPack[slot]) return pet.mascotPack[slot];
+  return getCustomMoodIcon(moodKey);
 }
 
 function WellnessLineChart({ data, color, h }) {
@@ -2836,6 +3054,10 @@ function MoodCalendarScreen({ go, pet, onEditEntry }) {
         </div>
       </div>
 
+      <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 20px 12px", textAlign: "center" }}>
+        Tap a date to see mood, notes, and daily info.
+      </p>
+
       {/* ── Week / Month toggle ─────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 8, padding: "0 20px 14px" }}>
         {["Week", "Month"].map(t => (
@@ -2878,7 +3100,7 @@ function MoodCalendarScreen({ go, pet, onEditEntry }) {
                 const mood    = moodFor(day);
                 const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
                 const isSel   = day === selDay;
-                const icon    = mood ? getCustomMoodIcon(mood.key) : null;
+                const icon    = mood ? getPetMoodIcon(pet, mood.key) : null;
                 return (
                   <button key={i} onClick={() => setSelDay(day === selDay ? null : day)}
                     style={{
@@ -2921,7 +3143,7 @@ function MoodCalendarScreen({ go, pet, onEditEntry }) {
                 const mood  = fullHistory.find(h => h.date === ds) || null;
                 const isTdy = wd.toDateString() === today.toDateString();
                 const isSel = selDay !== null && wd.getDate() === selDay && wd.getMonth() === viewDate.getMonth();
-                const icon  = mood ? getCustomMoodIcon(mood.key) : null;
+                const icon  = mood ? getPetMoodIcon(pet, mood.key) : null;
                 return (
                   <button key={i}
                     onClick={() => { setViewDate(new Date(wd.getFullYear(), wd.getMonth(), 1)); setSelDay(isSel ? null : wd.getDate()); }}
@@ -2993,7 +3215,7 @@ function MoodCalendarScreen({ go, pet, onEditEntry }) {
               {/* Mood row */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 {(() => {
-                  const icon = getCustomMoodIcon(selMood.key);
+                  const icon = getPetMoodIcon(pet, selMood.key);
                   return icon ? <img src={icon} alt={selMood.label} style={{ width: 52, height: 52, objectFit: "contain", flexShrink: 0 }} /> : null;
                 })()}
                 <div style={{ flex: 1 }}>
@@ -3726,6 +3948,10 @@ function AiScreen({ go, pet, aiHistory, setAiHistory }) {
     <div style={{ padding: "22px 22px 16px", display: "flex", flexDirection: "column", height: "100%" }}>
       <TopBar title={`Ask about ${pet.name}`} onBack={() => go("home")} />
 
+      <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 10px", flexShrink: 0 }}>
+        Ask about changes in mood, sleep, appetite, or potty.
+      </p>
+
       {/* Safety notice */}
       <div style={{
         background: "#FFF8E6", borderRadius: 14, padding: "9px 13px",
@@ -3753,7 +3979,7 @@ function AiScreen({ go, pet, aiHistory, setAiHistory }) {
             {m.from === "comi" && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: theme.sky, display: "grid", placeItems: "center", overflow: "hidden", flexShrink: 0 }}>
-                  <img src={ComiMain} alt="Comi" style={{ width: "85%", height: "85%", objectFit: "contain" }} />
+                  <img src={getMascotImage(pet)} alt="Comi" style={{ width: "85%", height: "85%", objectFit: "contain" }} />
                 </div>
                 <span style={{ fontFamily: "Nunito", fontSize: 11, color: theme.slate, fontWeight: 700 }}>Comi</span>
               </div>
@@ -4112,8 +4338,10 @@ const DOG_EVENTS = [
   { id: 3, title: "Saturday Pack Walk", date: "Jul 26", location: "Burnaby Lake Trail", attendees: 32, photo: "https://images.unsplash.com/photo-1534361960057-19f4434a4fc6?auto=format&fit=crop&w=400&q=80" },
 ];
 
-function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
-  const [tab,           setTab]           = useState("For You");
+function CommunityScreen({ posts, setPosts, pet, petPhoto, initialTab }) {
+  const [tab,           setTab]           = useState(initialTab || "For You");
+  // Lets the tour drive this screen straight to a specific tab (e.g. "Places")
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
   const [searchQ,       setSearchQ]       = useState("");
   const [searchFocus,   setSearchFocus]   = useState(false);
   const [askOpen,       setAskOpen]       = useState(false);
@@ -4217,7 +4445,7 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
         <div style={{ position: "absolute", bottom: -18, left: -18, width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,0.07)", pointerEvents: "none" }} />
         <p style={{ fontFamily: "Nunito", fontSize: 11, color: "rgba(255,255,255,0.72)", margin: "0 0 2px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" }}>Welcome to</p>
         <h1 style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 22, color: "#fff", margin: "0 0 4px", lineHeight: 1.2 }}>The Comi Pack</h1>
-        <p style={{ fontFamily: "Nunito", fontSize: 12.5, color: "rgba(255,255,255,0.80)", margin: "0 0 14px", lineHeight: 1.4 }}>Connect with pet owners, share moments, and grow together.</p>
+        <p style={{ fontFamily: "Nunito", fontSize: 12.5, color: "rgba(255,255,255,0.80)", margin: "0 0 14px", lineHeight: 1.4 }}>Find groups, events, and dog-friendly places.</p>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
           <button onClick={() => setAskOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 999, background: "#fff", border: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 12.5, color: theme.ocean, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
             <Plus size={14} /> Share moment
@@ -4245,7 +4473,10 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
       {/* ── Tabs ── */}
       <div style={{ padding: "10px 16px 0", display: "flex", gap: 7, overflowX: "auto" }}>
         {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ flexShrink: 0, padding: "8px 20px", borderRadius: 999, border: "none", background: tab === t ? theme.ocean : "#fff", color: tab === t ? "#fff" : theme.slate, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, cursor: "pointer", boxShadow: tab === t ? "0 3px 10px rgba(90,142,200,0.26)" : "0 1px 4px rgba(0,0,0,0.05)", transition: "all 0.12s" }}>{t}</button>
+          <button key={t} onClick={() => setTab(t)} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, padding: "8px 20px", borderRadius: 999, border: "none", background: tab === t ? theme.ocean : "#fff", color: tab === t ? "#fff" : theme.slate, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, cursor: "pointer", boxShadow: tab === t ? "0 3px 10px rgba(90,142,200,0.26)" : "0 1px 4px rgba(0,0,0,0.05)", transition: "all 0.12s" }}>
+            {t === "Places" && <MapPin size={13} />}
+            {t}
+          </button>
         ))}
       </div>
 
@@ -4268,8 +4499,8 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                     </div>
                     <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: theme.ink, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.who.split(" & ")[1] || f.who}</p>
                     <p style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate, margin: "0 0 8px" }}>{f.breed}</p>
-                    <button onClick={() => togglePack(f.id)} style={{ width: "100%", padding: "5px 0", borderRadius: 999, border: "none", background: packFriends[f.id] ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: packFriends[f.id] ? "#fff" : theme.ocean, cursor: "pointer" }}>
-                      {packFriends[f.id] ? "✓ Pack" : "+ Add"}
+                    <button onClick={() => togglePack(f.id)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 0", borderRadius: 999, border: "none", background: packFriends[f.id] ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: packFriends[f.id] ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                      {packFriends[f.id] ? <><Check size={11} /> Pack</> : "+ Add"}
                     </button>
                   </div>
                 ))}
@@ -4291,8 +4522,8 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                     <div style={{ padding: "9px 10px 11px" }}>
                       <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: theme.ink, margin: "0 0 2px", lineHeight: 1.3 }}>{g.name}</p>
                       <p style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate, margin: "0 0 7px" }}>{g.members.toLocaleString()} members</p>
-                      <button onClick={() => toggleGroup(g.id)} style={{ width: "100%", padding: "5px 0", borderRadius: 999, border: "none", background: g.joined ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: g.joined ? "#fff" : theme.ocean, cursor: "pointer" }}>
-                        {g.joined ? "✓ Joined" : "Join"}
+                      <button onClick={() => toggleGroup(g.id)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 0", borderRadius: 999, border: "none", background: g.joined ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: g.joined ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                        {g.joined ? <><Check size={11} /> Joined</> : "Join"}
                       </button>
                     </div>
                   </div>
@@ -4318,6 +4549,28 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                       <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ocean, margin: "2px 0 0", fontWeight: 700 }}>{ev.attendees} going</p>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Places near you */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 2px" }}>
+                <span style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, display: "flex", alignItems: "center", gap: 5 }}>
+                  <MapPin size={15} color={theme.ocean} /> Places near you
+                </span>
+                <button onClick={() => setTab("Places")} style={{ background: "none", border: "none", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer" }}>See all</button>
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+                {PLACES.filter(p => p.type !== "Event").slice(0, 4).map(p => (
+                  <a key={p.id} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.mapsQuery)}`} target="_blank" rel="noopener noreferrer"
+                    style={{ flexShrink: 0, width: 150, background: "#fff", borderRadius: 18, padding: "12px 12px 11px", boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)", textDecoration: "none" }}>
+                    <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 12, color: theme.ink, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
+                    <p style={{ fontFamily: "Nunito", fontSize: 10, color: theme.slate, margin: "0 0 8px" }}>{p.type} · {p.dist}</p>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ocean }}>
+                      <MapPin size={11} /> Open in Maps
+                    </span>
+                  </a>
                 ))}
               </div>
             </div>
@@ -4381,8 +4634,8 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                   <div style={{ padding: "10px 12px 12px" }}>
                     <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 13, color: theme.ink, margin: "0 0 2px" }}>{f.who}</p>
                     <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.slate, margin: "0 0 8px" }}>{f.breed}</p>
-                    <button onClick={() => togglePack(f.id)} style={{ width: "100%", padding: "7px 0", borderRadius: 999, border: "none", background: packFriends[f.id] ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: packFriends[f.id] ? "#fff" : theme.ocean, cursor: "pointer" }}>
-                      {packFriends[f.id] ? "✓ In Pack" : "+ Add to Pack"}
+                    <button onClick={() => togglePack(f.id)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "7px 0", borderRadius: 999, border: "none", background: packFriends[f.id] ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: packFriends[f.id] ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                      {packFriends[f.id] ? <><Check size={12} /> In Pack</> : "+ Add to Pack"}
                     </button>
                   </div>
                 </div>
@@ -4407,8 +4660,8 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                     <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 4px", lineHeight: 1.4 }}>{g.desc}</p>
                     <p style={{ fontFamily: "Nunito", fontSize: 11, color: theme.ocean, margin: 0, fontWeight: 700 }}>{g.members.toLocaleString()} members</p>
                   </div>
-                  <button onClick={() => toggleGroup(g.id)} style={{ flexShrink: 0, padding: "8px 16px", borderRadius: 999, border: "none", background: g.joined ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: g.joined ? "#fff" : theme.ocean, cursor: "pointer" }}>
-                    {g.joined ? "✓ Joined" : "Join"}
+                  <button onClick={() => toggleGroup(g.id)} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 999, border: "none", background: g.joined ? theme.ocean : theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: g.joined ? "#fff" : theme.ocean, cursor: "pointer" }}>
+                    {g.joined ? <><Check size={13} /> Joined</> : "Join"}
                   </button>
                 </div>
               </div>
@@ -4429,10 +4682,18 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                 <div style={{ padding: "12px 14px 14px" }}>
                   <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: theme.ink, margin: "0 0 4px" }}>{ev.title}</p>
                   <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 2px" }}>{ev.date}</p>
-                  <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 10px" }}>{ev.location}</p>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                    <MapPin size={12} color={theme.slate} /> {ev.location}
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean }}>{ev.attendees} going</span>
-                    <button style={{ padding: "8px 18px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>RSVP</button>
+                    <div style={{ display: "flex", gap: 7 }}>
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.location + " Burnaby BC")}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 12px", borderRadius: 999, border: `1.5px solid ${theme.ocean}`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: theme.ocean, cursor: "pointer", textDecoration: "none" }}>
+                        <MapPin size={13} /> Maps
+                      </a>
+                      <button style={{ padding: "8px 18px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>RSVP</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4473,8 +4734,8 @@ function CommunityScreen({ posts, setPosts, pet, petPhoto }) {
                   <img src={askPhoto} alt="preview" style={{ width: "100%", maxHeight: 150, objectFit: "cover", borderRadius: 14, display: "block" }} />
                   <button onClick={() => setAskPhoto(null)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.40)", border: "none", borderRadius: "50%", width: 26, height: 26, display: "grid", placeItems: "center", cursor: "pointer" }}><X size={13} color="#fff" /></button>
                 </div>
-              : <label style={{ display: "block", padding: "10px", borderRadius: 999, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.ocean, textAlign: "center", cursor: "pointer", marginBottom: 10 }}>
-                  📷 Add photo<input type="file" accept="image/*" onChange={handlePostPhoto} style={{ display: "none" }} />
+              : <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 999, background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.ocean, cursor: "pointer", marginBottom: 10 }}>
+                  <Camera size={14} /> Add photo<input type="file" accept="image/*" onChange={handlePostPhoto} style={{ display: "none" }} />
                 </label>
             }
             <Button onClick={submitPost} disabled={!askText.trim() && !askPhoto}>Post to the Pack</Button>
@@ -4492,7 +4753,7 @@ function CommunityPlaces({ pet }) {
   const [locStatus, setLocStatus] = useState("prompt");
   const [currentLoc, setCurrentLoc] = useState("Burnaby, BC");
   const [coords, setCoords] = useState(null);
-  const FILTERS = ["All", "Park", "Walk", "Café", "Vet", "Groomer"];
+  const FILTERS = ["All", "Park", "Walk", "Café", "Grooming", "Store"];
 
   const requestLocation = () => {
     if (!navigator.geolocation) { setCurrentLoc("Burnaby, BC"); setLocStatus("granted"); return; }
@@ -4568,19 +4829,21 @@ function CommunityPlaces({ pet }) {
         : filtered.map(place => (
           <div key={place.id} style={{ background: "#fff", borderRadius: 20, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 12px rgba(90,142,200,0.09)", border: "1.5px solid rgba(90,142,200,0.07)" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ background: theme.mist, borderRadius: 14, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
-                {place.emoji}
+              <div style={{ background: theme.mist, borderRadius: 14, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <MapPin size={20} color={theme.ocean} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
                   <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: 0 }}>{place.name}</p>
                   <span style={{ fontFamily: "Nunito", fontSize: 11, color: theme.slate, flexShrink: 0, marginLeft: 6 }}>{place.dist}</span>
                 </div>
-                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 6px" }}>{place.type} · 🚶 {place.walkTime}</p>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 4 }}>
+                  {place.type} · <Footprints size={11} /> {place.walkTime}
+                </p>
                 <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.ink, margin: "0 0 8px", lineHeight: 1.4 }}>{place.petNote}</p>
                 <a href={mapsUrl(place)} target="_blank" rel="noopener noreferrer"
-                  style={{ display: "inline-block", padding: "6px 14px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", textDecoration: "none", cursor: "pointer" }}>
-                  Directions
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#fff", textDecoration: "none", cursor: "pointer" }}>
+                  <MapPin size={12} /> Open in Google Maps
                 </a>
               </div>
             </div>
@@ -4916,11 +5179,12 @@ function ExploreScreen({ pet }) {
 }
 
 // 12. Profile / Settings — shows pet photo, age, weight, and edit button
-function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet, savedMsg, onClearSaved }) {
+function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet, savedMsg, onClearSaved, onDeleteMascot, onUseDefaultMascot, onReplayTour, scrollTargetId }) {
   const [notif,  setNotif]  = useState(true);
   const [weekly, setWeekly] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastText, setToastText] = useState("");
+  const [showMascotPack, setShowMascotPack] = useState(false);
 
   useEffect(() => {
     if (savedMsg) {
@@ -4931,11 +5195,20 @@ function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet
     }
   }, [savedMsg]);
 
+  // Lets the tour scroll this screen straight to a specific card (e.g. Comi Plus)
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [scrollTargetId]);
+
   const allPets = pets?.length ? pets : [pet];
 
   return (
     <div style={{ padding: "22px 22px 36px" }}>
       <TopBar title="Profile" />
+      <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: "-8px 0 16px" }}>
+        Manage pet profiles, mascot, Smart Dog Tag, and settings.
+      </p>
 
       {/* ── Toast confirmation ─────────────────────────────────────────── */}
       {showToast && (
@@ -4998,6 +5271,78 @@ function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet
         </button>
       </div>
 
+      {/* ── Pet Mascot ─────────────────────────────────────────────────── */}
+      <SectionTitle>Pet Mascot</SectionTitle>
+      <Card style={{ marginBottom: 18 }}>
+        {pet.mascotMode === "ai" && pet.mascotStatus === "ready" && pet.mascotPack ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <img src={pet.mascotPack.base} alt="Mascot" style={{ width: 48, height: 48, objectFit: "contain", borderRadius: "50%", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: 0 }}>Custom AI mascot active</p>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0 }}>Used across Home, mood check-in, and Wellness</p>
+              </div>
+            </div>
+            <div style={{ cursor: "pointer" }} onClick={() => setShowMascotPack(true)}>
+              <Row icon={QrCode} label="View mascot pack"><ChevronRight size={18} color={theme.slate} /></Row>
+            </div>
+            <Divider />
+            <div style={{ cursor: "pointer" }} onClick={() => onEditPet?.(pet.id)}>
+              <Row icon={Camera} label="Regenerate mascot"><ChevronRight size={18} color={theme.slate} /></Row>
+            </div>
+            <Divider />
+            <div style={{ cursor: "pointer" }} onClick={() => onEditPet?.(pet.id)}>
+              <Row icon={Pencil} label="Change source photo"><ChevronRight size={18} color={theme.slate} /></Row>
+            </div>
+            <Divider />
+            <div style={{ cursor: "pointer" }} onClick={onUseDefaultMascot}>
+              <Row icon={PawPrint} label="Use default breed mascot"><ChevronRight size={18} color={theme.slate} /></Row>
+            </div>
+            <Divider />
+            <div style={{ cursor: "pointer" }} onClick={() => { if (window.confirm(`Delete ${pet.name || "this pet"}'s custom mascot? You can always generate a new one later.`)) onDeleteMascot?.(); }}>
+              <Row icon={X} label="Delete custom mascot"><span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 12, color: "#C0392B" }}>Delete</span></Row>
+            </div>
+          </>
+        ) : (
+          <div style={{ cursor: "pointer" }} onClick={() => onEditPet?.(pet.id)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ background: theme.mist, borderRadius: 12, padding: 9, flexShrink: 0 }}>
+                <Camera size={20} color={theme.ocean} strokeWidth={1.5} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: theme.ink, margin: "0 0 2px" }}>Create an AI mascot</p>
+                <p style={{ fontFamily: "Nunito", fontSize: 12, color: theme.slate, margin: 0, lineHeight: 1.5 }}>
+                  Turn a photo of {pet.name || "your pet"} into their own Comi-style mascot.
+                </p>
+              </div>
+              <ChevronRight size={18} color={theme.slate} />
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Mascot pack viewer sheet */}
+      {showMascotPack && pet.mascotPack && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowMascotPack(false)}>
+          <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "22px 22px 32px", width: "100%", maxWidth: 390 }} onClick={(e) => e.stopPropagation()}>
+            <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 16, color: theme.ink, margin: "0 0 14px", textAlign: "center" }}>
+              {pet.name || "Your pet"}'s mascot pack
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+              {[["base","Base"],["fun","Fun"],["sad","Sad"],["sleepy","Sleepy"],["thinking","Thinking"],["worry","Worry"]].map(([slot,label]) => (
+                <div key={slot} style={{ textAlign: "center" }}>
+                  <img src={pet.mascotPack[slot]} alt={label} style={{ width: "100%", aspectRatio: "1", objectFit: "contain", borderRadius: 16, background: theme.mist, marginBottom: 4 }} />
+                  <span style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.slate }}>{label}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowMascotPack(false)} style={{ width: "100%", padding: 14, borderRadius: 16, border: "none", background: theme.mist, fontFamily: "Nunito", fontWeight: 700, fontSize: 15, color: theme.slate, cursor: "pointer" }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Wellness preferences ───────────────────────────────────────── */}
       <SectionTitle>Wellness preferences</SectionTitle>
       <Card style={{ marginBottom: 18 }}>
@@ -5008,7 +5353,7 @@ function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet
 
       {/* ── Comi Plus ─────────────────────────────────────────────────── */}
       <SectionTitle>Comi Plus</SectionTitle>
-      <div style={{
+      <div id="comi-plus-card" style={{
         background: "linear-gradient(135deg, #EAF4FB 0%, #D6C7F0 100%)",
         borderRadius: 22, padding: "18px 18px 16px", marginBottom: 18,
         border: "1.5px solid rgba(130,100,220,0.18)",
@@ -5048,6 +5393,10 @@ function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet
       <Card>
         <div style={{ cursor: "pointer" }} onClick={() => go("reminders")}>
           <Row icon={Bell}    label="Care & Calendar"><ChevronRight size={18} color={theme.slate} /></Row>
+        </div>
+        <Divider />
+        <div style={{ cursor: "pointer" }} onClick={onReplayTour}>
+          <Row icon={Smile} label="Replay app tour"><ChevronRight size={18} color={theme.slate} /></Row>
         </div>
         <Divider />
         <Row icon={Shield}  label="Privacy & data"><ChevronRight size={18} color={theme.slate} /></Row>
@@ -5448,6 +5797,97 @@ function CameraEventsScreen({ go, pet, onUpdateEvents }) {
   );
 }
 
+/* ---------- FIRST-TIME USER TOUR ---------- */
+/* Each step drives real navigation: `screen` is passed to go() so the user
+   sees the actual feature screen behind the tour card. `communityTab` and
+   `scrollToId` are optional extra hints consumed by App/CommunityScreen/
+   ProfileScreen to land on the most relevant part of that screen. */
+const TOUR_STEPS = [
+  { title: "Pet Profile Setup",        text: "Start by creating your pet profile so Comi can personalize mood tracking and wellness insights.", screen: "setup" },
+  { title: "Custom Mascot",            text: "Upload or take a photo to create a personal Comi mascot, or use a default breed mascot.", screen: "profile" },
+  { title: "Home",                     text: "Home is your daily dashboard. You can see your pet's mood, mascot, and quick actions.", screen: "home" },
+  { title: "Mood Check-in",            text: "Choose a mood, set mood strength, and add a note so you can review changes later.", screen: "mood" },
+  { title: "Wellness Calendar",        text: "Your saved mood entries appear here. Tap a date to see mood, notes, and daily info.", screen: "mood_calendar" },
+  { title: "AI Insight",               text: "Ask Comi about changes in mood, sleep, appetite, potty, or behaviour.", screen: "ai" },
+  { title: "Community & Places",       text: "Find groups, events, pet owners, and dog-friendly places with Google Maps links.", screen: "community", communityTab: "Places" },
+  { title: "Smart Dog Tag / Comi Plus",text: "Comi Plus includes a Smart Dog Tag with QR profile, NFC tap sharing, GPS, movement tracking, and sleep/rest estimates.", screen: "profile", scrollToId: "comi-plus-card" },
+  { title: "Profile & Settings",       text: "Manage pet profiles, mascots, Comi Plus, privacy, settings, and replay the tour anytime.", screen: "profile" },
+];
+
+function TourOverlay({ onNavigateStep, onFinish }) {
+  const [step, setStep] = useState(-1); // -1 = intro card
+  const close = () => onFinish();
+
+  const goToStep = (i) => {
+    setStep(i);
+    onNavigateStep(TOUR_STEPS[i]);
+  };
+
+  // Intro card — centered, full backdrop (not tied to a screen yet)
+  if (step === -1) {
+    return (
+      <div style={{ position: "absolute", inset: 0, background: "rgba(52,65,78,0.45)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ background: "#fff", borderRadius: 24, padding: "26px 24px 22px", width: "100%", maxWidth: 340, boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 20, color: theme.ink, margin: "0 0 8px", textAlign: "center" }}>
+            Welcome to Comi
+          </p>
+          <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "0 0 20px", textAlign: "center", lineHeight: 1.55 }}>
+            A quick guided tour of the real app — takes under a minute.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Button onClick={() => goToStep(0)}>Start tour</Button>
+            <button onClick={close} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.slate, padding: 8 }}>
+              Skip tour
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step cards — bottom-anchored with a light backdrop so the real screen
+  // stays visible above, like a spotlighted walkthrough rather than a modal.
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(52,65,78,0.18)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "20px 22px 26px", width: "100%", maxWidth: 390, boxShadow: "0 -8px 32px rgba(0,0,0,0.20)", pointerEvents: "auto" }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+          {TOUR_STEPS.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? theme.ocean : theme.line }} />
+          ))}
+        </div>
+        <p style={{ fontFamily: "Nunito", fontWeight: 700, fontSize: 11, color: theme.ocean, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          Step {step + 1} of {TOUR_STEPS.length}
+        </p>
+        <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 18, color: theme.ink, margin: "0 0 8px" }}>
+          {TOUR_STEPS[step].title}
+        </p>
+        <p style={{ fontFamily: "Nunito", fontSize: 14, color: theme.slate, margin: "0 0 20px", lineHeight: 1.55 }}>
+          {TOUR_STEPS[step].text}
+        </p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          {step > 0 && (
+            <button onClick={() => goToStep(step - 1)} style={{ flex: 1, padding: "12px 0", borderRadius: 999, border: `2px solid #80A0FF`, background: "#fff", fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: theme.ocean, cursor: "pointer" }}>
+              Back
+            </button>
+          )}
+          {step < TOUR_STEPS.length - 1 ? (
+            <button onClick={() => goToStep(step + 1)} style={{ flex: 2, padding: "12px 0", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>
+              Next
+            </button>
+          ) : (
+            <button onClick={close} style={{ flex: 2, padding: "12px 0", borderRadius: 999, border: "none", background: theme.ocean, fontFamily: "Nunito", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>
+              Finish
+            </button>
+          )}
+        </div>
+        <button onClick={close} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito", fontSize: 12, color: theme.slate, padding: 6 }}>
+          Skip tour
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- BOTTOM NAVIGATION ---------- */
 function BottomNav({ active, go }) {
   const tabs = [
@@ -5482,7 +5922,15 @@ const DEFAULT_PET_TEMPLATE = {
   lastHeatDate: "", heatNotes: "",
   connectedCamera: null,
   cameraEvents: [],
-  mascot: null, // { breed, color, markings, pose }
+  mascot: null, // { breed, color, markings, pose } — used as the "default breed mascot" fallback
+
+  // ── AI Custom Pet Mascot ──
+  photoUri: null,            // data URL of the pet photo used to generate the mascot pack
+  mascotMode: "defaultBreed", // "ai" | "defaultBreed"
+  mascotStatus: "none",       // "none" | "generating" | "ready" | "failed"
+  mascotPack: null,           // { base, fun, sad, sleepy, thinking, worry } — data URLs
+  mascotSourcePhoto: null,    // kept separately from photoUri so it can be reused for "regenerate"
+  mascotGeneratedAt: null,
 };
 
 const ensurePetFields = (p) => ({ ...DEFAULT_PET_TEMPLATE, ...p });
@@ -5600,6 +6048,27 @@ export default function App() {
   // pet switcher overlay
   const [showPetSwitcher, setShowPetSwitcher] = useState(false);
 
+  // first-time user tour — screen-by-screen walkthrough
+  const [hasCompletedTour, setHasCompletedTour] = useState(() => {
+    try { return localStorage.getItem("comi_has_completed_tour") === "1"; } catch { return false; }
+  });
+  const [showTour, setShowTour] = useState(false);
+  const [tourCommunityTab, setTourCommunityTab] = useState(null);
+  const [tourScrollTarget, setTourScrollTarget] = useState(null);
+  const finishTour = () => {
+    try { localStorage.setItem("comi_has_completed_tour", "1"); } catch {}
+    setHasCompletedTour(true);
+    setShowTour(false);
+    setTourCommunityTab(null);
+    setTourScrollTarget(null);
+  };
+  // Called by TourOverlay on every Next/Back/Start — drives the user to the real screen for that step
+  const handleTourNavigate = (stepInfo) => {
+    go(stepInfo.screen);
+    setTourCommunityTab(stepInfo.communityTab || null);
+    setTourScrollTarget(stepInfo.scrollToId || null);
+  };
+
   // community
   const [posts, setPosts] = useState(START_POSTS);
 
@@ -5623,6 +6092,11 @@ export default function App() {
   // Navigation — defined early so all closures below can safely reference it
   const go = (s) => setScreen(s);
 
+  // Show the first-time tour once a new (or demo) user reaches Home, until completed or skipped
+  useEffect(() => {
+    if (screen === "home" && !hasCompletedTour) setShowTour(true);
+  }, [screen, hasCompletedTour]);
+
   // derived
   const selectedPet = pets.find(p => p.id === selectedPetId) || pets[0];
 
@@ -5644,6 +6118,13 @@ export default function App() {
   const saveSleep = (entry) => updateSelectedPet({ sleepData: entry });
   const saveCamera       = (cam, events) => updateSelectedPet({ connectedCamera: cam, cameraEvents: events });
   const updateCamEvents  = (events)       => updateSelectedPet({ cameraEvents: events });
+
+  // AI Custom Pet Mascot
+  const updatePetMascot   = (patch) => updateSelectedPet(patch);
+  const deleteCustomMascot = () => updateSelectedPet({
+    mascotMode: "defaultBreed", mascotStatus: "none",
+    mascotPack: null, mascotSourcePhoto: null, mascotGeneratedAt: null,
+  });
 
   const selectedReminders = petReminders[selectedPetId] || START_REMINDERS.map(r => ({ ...r }));
   const setSelectedReminders = (updater) => {
@@ -5750,11 +6231,11 @@ export default function App() {
       case "wellness_old": return <InsightsScreen go={go} pet={sp} sleepData={sp.sleepData} todayMood={sp.todayMood} />;
       case "ai":        return <AiScreen go={go} pet={sp} aiHistory={selectedAiHistory} setAiHistory={setSelectedAiHistory} />;
       case "reminders": return <CalendarScreen go={go} reminders={selectedReminders} setReminders={setSelectedReminders} calendarNotes={calendarNotes} setCalendarNotes={setCalendarNotes} pet={selectedPet} pets={pets} />;
-      case "community": return <CommunityScreen posts={posts} setPosts={setPosts} pet={sp} petPhoto={photo} />;
+      case "community": return <CommunityScreen posts={posts} setPosts={setPosts} pet={sp} petPhoto={photo} initialTab={tourCommunityTab} />;
       case "explore":       return <ExploreScreen pet={sp} />;
       case "camera_setup":  return <CameraSetupScreen go={go} pets={pets} selectedPetId={selectedPetId} onSave={saveCamera} />;
       case "camera_events": return <CameraEventsScreen go={go} pet={sp} onUpdateEvents={updateCamEvents} />;
-      case "profile":       return <ProfileScreen go={go} pet={sp} petPhoto={photo} onAddPet={handleAddNewPet} pets={pets} petPhotos={petPhotos} onEditPet={handleEditPet} savedMsg={profileSavedMsg} onClearSaved={() => setProfileSavedMsg(null)} />;
+      case "profile":       return <ProfileScreen go={go} pet={sp} petPhoto={photo} onAddPet={handleAddNewPet} pets={pets} petPhotos={petPhotos} onEditPet={handleEditPet} savedMsg={profileSavedMsg} onClearSaved={() => setProfileSavedMsg(null)} onDeleteMascot={deleteCustomMascot} onUseDefaultMascot={() => updatePetMascot({ mascotMode: "defaultBreed" })} onReplayTour={() => setShowTour(true)} scrollTargetId={tourScrollTarget} />;
       default:          return <Welcome go={go} />;
     }
   };
@@ -5806,6 +6287,9 @@ export default function App() {
         </div>
         {/* bottom nav */}
         {showNav && <BottomNav active={screen} go={go} />}
+
+        {/* First-time tour overlay */}
+        {showTour && <TourOverlay onNavigateStep={handleTourNavigate} onFinish={finishTour} />}
 
         {/* Pet switcher overlay — rendered at phone-frame level to use position:absolute correctly */}
         {showPetSwitcher && (

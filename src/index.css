@@ -12,7 +12,5 @@ html {
 
 body {
   font-family: 'Nunito', sans-serif;
-  overflow-x: hidden;
-  overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
 }
