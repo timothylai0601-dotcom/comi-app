@@ -5185,6 +5185,48 @@ function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet
   const [showToast, setShowToast] = useState(false);
   const [toastText, setToastText] = useState("");
   const [showMascotPack, setShowMascotPack] = useState(false);
+  const [showPlusWaitlist, setShowPlusWaitlist] = useState(false);
+  const [plusWaitlistEmail, setPlusWaitlistEmail] = useState("");
+  const [plusWaitlistJoined, setPlusWaitlistJoined] = useState(() => {
+    try { return localStorage.getItem("comi_app_plus_waitlist_joined") === "1"; } catch { return false; }
+  });
+
+  const fireToast = (text) => {
+    setToastText(text);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2800);
+  };
+
+  const joinPlusWaitlist = () => {
+    const email = plusWaitlistEmail.trim();
+    if (!email.includes("@")) return;
+    const entry = {
+      name: pet?.name ? `${pet.name}'s owner` : "Comi app user",
+      email,
+      hasPet: "Yes",
+      comiPlusInterest: "Yes",
+      submittedAt: new Date().toISOString(),
+      source: "app",
+    };
+    try {
+      const list = JSON.parse(localStorage.getItem("comi_landing_waitlist") || "[]");
+      list.push(entry);
+      localStorage.setItem("comi_landing_waitlist", JSON.stringify(list));
+      localStorage.setItem("comi_app_plus_waitlist_joined", "1");
+    } catch { /* storage unavailable */ }
+    const endpoint = import.meta.env.VITE_WAITLIST_FORM_ENDPOINT;
+    if (endpoint) {
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      }).catch(() => {});
+    }
+    setPlusWaitlistJoined(true);
+    setShowPlusWaitlist(false);
+    setPlusWaitlistEmail("");
+    fireToast("You're on the Comi Plus waitlist!");
+  };
 
   useEffect(() => {
     if (savedMsg) {
@@ -5380,13 +5422,63 @@ function ProfileScreen({ go, pet, petPhoto, onAddPet, pets, petPhotos, onEditPet
             </div>
           ))}
         </div>
-        <button style={{ width: "100%", padding: "11px 0", borderRadius: 999, border: "none", background: "#6E4FC8", fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>
-          Join waitlist for Comi Plus
+        <button
+          onClick={() => !plusWaitlistJoined && setShowPlusWaitlist(true)}
+          disabled={plusWaitlistJoined}
+          style={{
+            width: "100%", padding: "11px 0", borderRadius: 999, border: "none",
+            background: plusWaitlistJoined ? "#B9A8DE" : "#6E4FC8",
+            fontFamily: "Quicksand", fontWeight: 700, fontSize: 14, color: "#fff",
+            cursor: plusWaitlistJoined ? "default" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}
+        >
+          {plusWaitlistJoined && <Check size={15} color="#fff" />}
+          {plusWaitlistJoined ? "You're on the waitlist" : "Join waitlist for Comi Plus"}
         </button>
         <p style={{ fontFamily: "Nunito", fontSize: 12, color: "#7B5EA7", margin: "10px 0 0", textAlign: "center", lineHeight: 1.5 }}>
           Smart Dog Tag · QR profile sharing · Advanced Wellness insights
         </p>
       </div>
+
+      {/* ── Join Comi Plus waitlist sheet ────────────────────────────────── */}
+      {showPlusWaitlist && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowPlusWaitlist(false)}>
+          <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "20px 22px 40px", width: "100%", maxWidth: 390 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <p style={{ fontFamily: "Quicksand", fontWeight: 700, fontSize: 17, color: "#34414E", margin: 0 }}>Join the Comi Plus waitlist</p>
+              <button onClick={() => setShowPlusWaitlist(false)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} color="#7C8B98" /></button>
+            </div>
+            <p style={{ fontFamily: "Nunito", fontSize: 13, color: theme.slate, margin: "0 0 16px", lineHeight: 1.5 }}>
+              Get updates when the Comi Plus Smart Dog Tag becomes available. This does not charge you.
+            </p>
+            <input
+              type="email"
+              placeholder="Your email"
+              value={plusWaitlistEmail}
+              onChange={e => setPlusWaitlistEmail(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") joinPlusWaitlist(); }}
+              style={{
+                width: "100%", padding: "12px 14px", borderRadius: 14, border: "1.5px solid #C8DCEF",
+                fontFamily: "Nunito", fontSize: 14, color: "#34414E", outline: "none",
+                background: "#fff", boxSizing: "border-box", marginBottom: 14,
+              }}
+            />
+            <button
+              onClick={joinPlusWaitlist}
+              disabled={!plusWaitlistEmail.trim().includes("@")}
+              style={{
+                width: "100%", padding: "13px 0", borderRadius: 999, border: "none",
+                background: plusWaitlistEmail.trim().includes("@") ? "#6E4FC8" : "#D9CFF0",
+                fontFamily: "Quicksand", fontWeight: 700, fontSize: 15, color: "#fff",
+                cursor: plusWaitlistEmail.trim().includes("@") ? "pointer" : "default",
+              }}
+            >
+              Join waitlist
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── App ───────────────────────────────────────────────────────── */}
       <SectionTitle>App</SectionTitle>
