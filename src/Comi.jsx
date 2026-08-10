@@ -6328,7 +6328,14 @@ export default function App() {
       {/* phone frame */}
       <div className="comi-phone-frame" style={{ width: 390, maxWidth: "100%", height: 800, maxHeight: "92vh", background: screen === "welcome" ? "linear-gradient(170deg, #B8D8EC 0%, #93C5E0 38%, #5A8EC8 100%)" : screen === "auth" ? "linear-gradient(160deg, #A8D4EA 0%, #7EBCDA 45%, #5A9EC8 100%)" : screen === "home" ? "linear-gradient(170deg, #A8CCDF 0%, #5FA8CF 42%, #3D88BE 100%)" : screen === "community" ? "linear-gradient(135deg, #4A82C0 0%, #6AAED8 55%, #93C5E0 100%)" : theme.mist, borderRadius: 40, overflow: "hidden", boxShadow: "0 24px 60px rgba(90,142,200,0.25)", display: "flex", flexDirection: "column", border: "10px solid #fff", position: "relative" }}>
         {/* faux status bar */}
-        <div className="comi-status-bar" style={{ display: "flex", justifyContent: "flex-end", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth" || screen === "home" || screen === "community") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
+        <div className="comi-status-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 22px 4px", fontFamily: "Quicksand", fontSize: 12, fontWeight: 700, color: (screen === "welcome" || screen === "auth" || screen === "home" || screen === "community") ? "#fff" : theme.ink, flexShrink: 0, background: "transparent" }}>
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); window.location.hash = ""; }}
+            style={{ display: "flex", gap: 4, alignItems: "center", fontFamily: "Quicksand", fontWeight: 700, color: "inherit", textDecoration: "none", opacity: 0.85 }}
+          >
+            ← Website
+          </a>
           <span style={{ display: "flex", gap: 4, alignItems: "center", fontFamily: "Quicksand", fontWeight: 700 }}>Comi</span>
         </div>
         {/* scrollable screen content */}
