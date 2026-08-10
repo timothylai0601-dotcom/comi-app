@@ -10,4 +10,4 @@ npm run dev
 ## Deploy to GitHub Pages
 npm run deploy
 
-Live: https://USERNAME.github.io/comi-app/
+Live: https://timothylai0601-dotcom.github.io/comi-app/

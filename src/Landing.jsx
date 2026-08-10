@@ -9,7 +9,7 @@ import LandingBackground from './LandingBackground.jpg'
   higher count, the higher number is shown instead. No other code needs to change.
 */
 const betaResults = {
-  usersTried: 0,
+  usersTried: 23,
   feedbackResponses: 0,
   waitlistSignups: 0,
   comiPlusInterested: 0,
@@ -513,7 +513,6 @@ export default function Landing() {
               <p>These numbers can be updated after sharing the MVP with real users.</p>
             </div>
             <div className="lp-stats">
-              <div className="lp-stat-card"><div className="lp-num">{stats.usersTried}</div><div className="lp-label">Users tried MVP</div></div>
               <div className="lp-stat-card"><div className="lp-num">{stats.feedbackResponses}</div><div className="lp-label">Feedback responses</div></div>
               <div className="lp-stat-card"><div className="lp-num">{stats.waitlistSignups}</div><div className="lp-label">Waitlist sign-ups</div></div>
               <div className="lp-stat-card"><div className="lp-num">{stats.comiPlusInterested}</div><div className="lp-label">Interested in Comi Plus</div></div>
