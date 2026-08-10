@@ -724,9 +724,8 @@ const CSS = `
 
 /* ---------- beta results ---------- */
 .lp-beta-card{ background:#EEF7FF; border:1px solid var(--border); border-radius:32px; padding:44px 32px; box-shadow:var(--shadow); }
-.lp-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-@media (max-width:860px){ .lp-stats{ grid-template-columns:repeat(2,1fr); } }
-@media (max-width:480px){ .lp-stats{ grid-template-columns:1fr; } }
+.lp-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media (max-width:860px){ .lp-stats{ grid-template-columns:1fr; } }
 .lp-stat-card{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); padding:22px 18px; text-align:center; box-shadow:var(--shadow); }
 .lp-num{ font-family:'Quicksand',sans-serif; font-weight:800; font-size:28px; color:var(--blue); }
 .lp-label{ font-size:12.5px; color:var(--navy); margin-top:6px; font-weight:700; }
