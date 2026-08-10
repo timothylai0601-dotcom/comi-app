@@ -6262,6 +6262,9 @@ export default function App() {
     try { localStorage.setItem("comi_selected_pet_id", "1"); } catch {}
     setPetReminders({ 1: DEMO_CODY_REMINDERS });
     setPetAiHistory({ 1: DEMO_AI_HISTORY });
+    // Demo login always replays the walkthrough, even if a prior session completed it
+    try { localStorage.removeItem("comi_has_completed_tour"); } catch {}
+    setHasCompletedTour(false);
   };
   const TAB_SCREENS = ["home", "insights", "mood_calendar", "community", "profile"];
   const showNav = TAB_SCREENS.includes(screen);
